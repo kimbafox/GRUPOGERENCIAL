@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIMBIN Coment</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eef4ff, #dbeafe);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .preview {
+            background: white;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            max-width: 520px;
+            text-align: center;
+        }
+
+        .preview img {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .preview p {
+            line-height: 1.5;
+            color: #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview">
+        <img src="../frontend/assets/kimbin.png" alt="KIMBIN" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'180\' height=\'180\'><circle cx=\'90\' cy=\'90\' r=\'86\' fill=\'%231f3c88\'/><text x=\'90\' y=\'108\' text-anchor=\'middle\' font-size=\'84\' font-family=\'Arial\' fill=\'white\'>K</text></svg>'">
+        <h1>KIMBIN flotante</h1>
+        <p id="nota-kimbin">Cargando nota actual...</p>
+    </div>
+
+    <script>
+        fetch('/api/kimbin-note')
+            .then((response) => response.json())
+            .then((data) => {
+                document.getElementById('nota-kimbin').textContent = data.mensaje || 'Sin nota por ahora.';
+            })
+            .catch(() => {
+                document.getElementById('nota-kimbin').textContent = 'Sin nota por ahora.';
+            });
+    </script>
+</body>
+</html>
