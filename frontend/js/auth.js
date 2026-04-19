@@ -158,10 +158,58 @@ async function cargarProductosAdmin() {
     }
 }
 
+function actualizarPreviewProducto() {
+    const nombre = document.getElementById('producto-nombre')?.value?.trim() || 'Nombre del producto';
+    const categoria = document.getElementById('producto-categoria')?.value?.trim() || 'Categoría';
+    const precio = document.getElementById('producto-precio')?.value?.trim() || '0';
+    const imagen = document.getElementById('producto-imagen')?.value?.trim() || 'assets/M.png';
+    const stock = document.getElementById('producto-stock')?.value?.trim() || '0';
+    const descripcion = document.getElementById('producto-descripcion')?.value?.trim() || 'Aquí verás el resumen del producto antes de publicarlo.';
+
+    const nombrePreview = document.getElementById('preview-nombre');
+    const categoriaPreview = document.getElementById('preview-categoria');
+    const precioPreview = document.getElementById('preview-precio');
+    const descripcionPreview = document.getElementById('preview-descripcion');
+    const stockPreview = document.getElementById('preview-stock');
+    const imagenPreview = document.getElementById('preview-imagen');
+
+    if (nombrePreview) nombrePreview.textContent = nombre;
+    if (categoriaPreview) categoriaPreview.textContent = categoria;
+    if (precioPreview) precioPreview.textContent = formatoCOP(precio);
+    if (descripcionPreview) descripcionPreview.textContent = descripcion;
+    if (stockPreview) stockPreview.textContent = `Stock: ${stock}`;
+    if (imagenPreview) {
+        imagenPreview.src = imagen;
+        imagenPreview.onerror = () => {
+            imagenPreview.src = 'assets/M.png';
+        };
+    }
+}
+
+function iniciarPreviewProducto() {
+    const ids = ['producto-nombre', 'producto-categoria', 'producto-precio', 'producto-imagen', 'producto-stock', 'producto-descripcion'];
+    ids.forEach((id) => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', actualizarPreviewProducto);
+        }
+    });
+
+    actualizarPreviewProducto();
+}
+
 function toggleProductoPanel() {
     const panel = document.getElementById('panel-productos');
+    const boton = document.getElementById('toggle-producto-btn');
+
     if (panel) {
         panel.classList.toggle('oculto');
+
+        if (boton) {
+            boton.textContent = panel.classList.contains('oculto')
+                ? 'Abrir ventana de carga'
+                : 'Cerrar ventana de carga';
+        }
     }
 }
 
@@ -173,6 +221,8 @@ function resetProductoForm() {
             input.value = '';
         }
     });
+
+    actualizarPreviewProducto();
 
     const estado = document.getElementById('productos-estado');
     if (estado) {
@@ -198,6 +248,8 @@ function editarProducto(id) {
     document.getElementById('producto-imagen').value = producto.imagen_url || '';
     document.getElementById('producto-stock').value = producto.stock || 0;
     document.getElementById('producto-descripcion').value = producto.descripcion || '';
+
+    actualizarPreviewProducto();
 
     const estado = document.getElementById('productos-estado');
     if (estado) {
@@ -321,6 +373,8 @@ async function cargarDashboardAdmin() {
         console.error('No se pudo cargar el dashboard', error);
     }
 }
+
+document.addEventListener('DOMContentLoaded', iniciarPreviewProducto);
 
 function logout() {
     sessionStorage.removeItem('auth');

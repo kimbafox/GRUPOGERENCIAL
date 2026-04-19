@@ -11,7 +11,7 @@
 <header>
     <div class="brand-copy">
         <h1>Panel Administrador</h1>
-        <p>Gestión completa de ventas, productos y usuarios</p>
+      
     </div>
     <div class="admin-inline-actions">
         <button type="button" onclick="window.location.href='index.html'">Ver tienda</button>
@@ -23,7 +23,7 @@
     <section class="info-panel">
         <h2>Bienvenido admin</h2>
         <p id="usuario-info">Zona protegida.</p>
-        <p>Aquí puedes cargar tus propios productos y revisar qué se compra más.</p>
+        
     </section>
 
     <section class="metrics-panel">
@@ -50,22 +50,68 @@
         </div>
     </section>
 
-    <section>
-        <div class="admin-inline-actions">
-            <h2>Productos</h2>
-            <button type="button" onclick="toggleProductoPanel()">Mostrar u ocultar carga</button>
+    <section class="product-upload-section">
+        <div class="upload-header">
+            <div>
+                <h2>Subir producto</h2>
+                <p>Abre la ventana desplegable, completa los datos y revisa la vista previa antes de guardar.</p>
+            </div>
+            <button id="toggle-producto-btn" type="button" onclick="toggleProductoPanel()">Abrir ventana de carga</button>
         </div>
 
-        <div id="panel-productos" class="oculto">
-            <div class="admin-grid">
-                <input type="hidden" id="producto-id">
-                <input type="text" id="producto-nombre" placeholder="Nombre del producto">
-                <input type="text" id="producto-categoria" placeholder="Categoría">
-                <input type="number" id="producto-precio" placeholder="Precio de venta">
-                <input type="text" id="producto-imagen" placeholder="Ruta de imagen o URL">
-                <input type="number" id="producto-stock" placeholder="Stock disponible">
+        <div id="panel-productos" class="product-panel-shell oculto">
+            <div class="form-preview-grid">
+                <div class="form-side">
+                    <input type="hidden" id="producto-id">
+
+                    <div class="admin-grid">
+                        <div class="field-group">
+                            <label for="producto-nombre">Nombre</label>
+                            <input type="text" id="producto-nombre" placeholder="Nombre del producto">
+                        </div>
+
+                        <div class="field-group">
+                            <label for="producto-categoria">Categoría</label>
+                            <input type="text" id="producto-categoria" placeholder="Categoría">
+                        </div>
+
+                        <div class="field-group">
+                            <label for="producto-precio">Precio</label>
+                            <input type="number" id="producto-precio" placeholder="Precio de venta">
+                        </div>
+
+                        <div class="field-group">
+                            <label for="producto-stock">Stock</label>
+                            <input type="number" id="producto-stock" placeholder="Stock disponible">
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="producto-imagen">Imagen</label>
+                        <input type="text" id="producto-imagen" placeholder="Ruta de imagen o URL">
+                    </div>
+
+                    <div class="field-group">
+                        <label for="producto-descripcion">Descripción</label>
+                        <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
+                    </div>
+                </div>
+
+                <aside class="preview-side">
+                    <h3>Previsualización</h3>
+                    <article class="product-preview-card">
+                        <img id="preview-imagen" class="preview-image" src="assets/M.png" alt="Vista previa del producto">
+                        <div class="preview-meta">
+                            <span id="preview-categoria" class="catalog-category">Categoría</span>
+                            <h4 id="preview-nombre">Nombre del producto</h4>
+                            <p id="preview-descripcion">Aquí verás el resumen del producto antes de publicarlo.</p>
+                            <strong id="preview-precio" class="preview-price">$0</strong>
+                            <small id="preview-stock" class="preview-stock-pill">Stock: 0</small>
+                        </div>
+                    </article>
+                </aside>
             </div>
-            <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
+
             <div class="admin-inline-actions">
                 <button type="button" onclick="guardarProductoAdmin()">Guardar producto</button>
                 <button type="button" onclick="resetProductoForm()">Limpiar formulario</button>
