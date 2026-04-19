@@ -13,11 +13,11 @@ function cerrarLogin() {
 }
 
 function formatoMoneda(valor) {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
+    const monto = Number(valor || 0);
+    return `Bs ${new Intl.NumberFormat('es-BO', {
+        minimumFractionDigits: 0,
         maximumFractionDigits: 0
-    }).format(Number(valor || 0));
+    }).format(monto)}`;
 }
 
 function escaparHtml(value) {

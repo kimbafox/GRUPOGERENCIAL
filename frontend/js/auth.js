@@ -49,12 +49,12 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
-function formatoCOP(valor) {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
+function formatoMoneda(valor) {
+    const monto = Number(valor || 0);
+    return `Bs ${new Intl.NumberFormat('es-BO', {
+        minimumFractionDigits: 0,
         maximumFractionDigits: 0
-    }).format(Number(valor || 0));
+    }).format(monto)}`;
 }
 
 async function cargarUsuariosAutorizados() {
@@ -175,7 +175,7 @@ function actualizarPreviewProducto() {
 
     if (nombrePreview) nombrePreview.textContent = nombre;
     if (categoriaPreview) categoriaPreview.textContent = categoria;
-    if (precioPreview) precioPreview.textContent = formatoCOP(precio);
+    if (precioPreview) precioPreview.textContent = formatoMoneda(precio);
     if (descripcionPreview) descripcionPreview.textContent = descripcion;
     if (stockPreview) stockPreview.textContent = `Stock: ${stock}`;
     if (imagenPreview) {
