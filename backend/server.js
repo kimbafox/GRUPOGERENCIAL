@@ -19,6 +19,40 @@ const correosBase = [
     'vicha@coso.com'
 ];
 const mensajeInicialKimbin = 'Escribe aquí la nota de KIMBIN desde el panel de administración.';
+const catalogoSemilla = [
+    {
+        nombre: 'Plan Marketing Digital',
+        categoria: 'Marketing',
+        descripcion: 'Impulsa tus ventas con campañas, diseño visual y acompañamiento comercial para tu marca.',
+        precio: 120000,
+        imagen_url: 'assets/TU%20MEJOR%20OPCIONES.png',
+        stock: 20
+    },
+    {
+        nombre: 'Diseño Corporativo',
+        categoria: 'Branding',
+        descripcion: 'Creamos piezas gráficas, identidad visual y presencia profesional para tu empresa.',
+        precio: 95000,
+        imagen_url: 'assets/QUIENES.png',
+        stock: 15
+    },
+    {
+        nombre: 'Gestión de Cuentas',
+        categoria: 'Administración',
+        descripcion: 'Organiza clientes, pagos y seguimiento comercial con una solución rápida y clara.',
+        precio: 78000,
+        imagen_url: 'assets/CUENTA.png',
+        stock: 30
+    },
+    {
+        nombre: 'Campaña Premium',
+        categoria: 'Ventas',
+        descripcion: 'Servicio integral para destacar productos, mejorar conversiones y mantener flujo de ventas diario.',
+        precio: 160000,
+        imagen_url: 'assets/ALGUN%20DIA.png',
+        stock: 12
+    }
+];
 
 if (!fs.existsSync(storageDir)) {
     fs.mkdirSync(storageDir, { recursive: true });
@@ -57,7 +91,7 @@ function crearUsuarioSiNoExiste(correo, clave = passwordBase) {
     const passwordHash = hashPassword(String(clave || passwordBase).trim());
 
     db.run(
-        `INSERT OR IGNORE INTO usuarios (nombre, email, password_hash, activo) VALUES (?, ?, ?, 1)`,
+        'INSERT OR IGNORE INTO usuarios (nombre, email, password_hash, activo) VALUES (?, ?, ?, 1)',
         [nombre, correo, passwordHash]
     );
 
@@ -73,6 +107,49 @@ function obtenerUsuarioActivo(correo, callback) {
         [correo],
         callback
     );
+}
+
+function validarAdminPorCorreo(correo, res, callback) {
+    const email = String(correo || '').trim().toLowerCase();
+
+    if (!esEmailValido(email)) {
+        return res.status(401).json({ ok: false, mensaje: 'Debes iniciar sesión como administrador.' });
+    }
+
+    obtenerUsuarioActivo(email, (error, usuario) => {
+        if (error) {
+            return res.status(500).json({ ok: false, mensaje: 'No se pudo validar el administrador.' });
+        }
+
+        if (!usuario) {
+            return res.status(403).json({ ok: false, mensaje: 'Tu correo no tiene permisos para administrar.' });
+        }
+
+        callback(usuario);
+    });
+}
+
+function sembrarProductosSiHaceFalta() {
+    db.get('SELECT COUNT(*) AS total FROM productos', [], (error, row) => {
+        if (error || (row?.total || 0) > 0) {
+            return;
+        }
+
+        catalogoSemilla.forEach((producto) => {
+            db.run(
+                `INSERT INTO productos (nombre, categoria, descripcion, precio, imagen_url, stock, activo)
+                 VALUES (?, ?, ?, ?, ?, ?, 1)`,
+                [
+                    producto.nombre,
+                    producto.categoria,
+                    producto.descripcion,
+                    producto.precio,
+                    producto.imagen_url,
+                    producto.stock
+                ]
+            );
+        });
+    });
 }
 
 function inicializarBaseDeDatos() {
@@ -105,14 +182,45 @@ function inicializarBaseDeDatos() {
             )
         `);
 
+        db.run(`
+            CREATE TABLE IF NOT EXISTS productos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                categoria TEXT NOT NULL,
+                descripcion TEXT NOT NULL,
+                precio REAL NOT NULL DEFAULT 0,
+                imagen_url TEXT DEFAULT '',
+                stock INTEGER NOT NULL DEFAULT 0,
+                activo INTEGER NOT NULL DEFAULT 1,
+                creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+                actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS ventas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                producto_id INTEGER NOT NULL,
+                producto_nombre TEXT NOT NULL,
+                cantidad INTEGER NOT NULL DEFAULT 1,
+                total REAL NOT NULL DEFAULT 0,
+                comprador_nombre TEXT,
+                comprador_email TEXT,
+                fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (producto_id) REFERENCES productos (id)
+            )
+        `);
+
         obtenerUsuariosSemilla().forEach((correo) => {
             crearUsuarioSiNoExiste(correo);
         });
 
         db.run(
-            `INSERT OR IGNORE INTO notas_kimbin (id, mensaje, autor_email) VALUES (1, ?, 'sistema@merkateck.com')`,
-            [mensajeInicialKimbin]
+            'INSERT OR IGNORE INTO notas_kimbin (id, mensaje, autor_email) VALUES (1, ?, ?)',
+            [mensajeInicialKimbin, 'sistema@merkateck.com']
         );
+
+        sembrarProductosSiHaceFalta();
     });
 }
 
@@ -196,6 +304,229 @@ app.post('/api/usuarios', (req, res) => {
     });
 });
 
+app.get('/api/productos', (req, res) => {
+    db.all(
+        `SELECT p.id, p.nombre, p.categoria, p.descripcion, p.precio, p.imagen_url, p.stock, p.activo,
+                p.creado_en, p.actualizado_en, COALESCE(SUM(v.cantidad), 0) AS vendidos
+         FROM productos p
+         LEFT JOIN ventas v ON v.producto_id = p.id
+         WHERE p.activo = 1
+         GROUP BY p.id
+         ORDER BY p.actualizado_en DESC, p.id DESC`,
+        [],
+        (error, productos) => {
+            if (error) {
+                return res.status(500).json({ ok: false, mensaje: 'No se pudo cargar el catálogo.' });
+            }
+
+            res.json({ ok: true, productos });
+        }
+    );
+});
+
+app.post('/api/productos', (req, res) => {
+    const { nombre, categoria, descripcion, precio, imagen_url, stock, adminEmail } = req.body || {};
+
+    validarAdminPorCorreo(adminEmail, res, () => {
+        const nombreFinal = String(nombre || '').trim();
+        const categoriaFinal = String(categoria || '').trim() || 'General';
+        const descripcionFinal = String(descripcion || '').trim();
+        const precioFinal = Number(precio || 0);
+        const imagenFinal = String(imagen_url || '').trim();
+        const stockFinal = Math.max(0, parseInt(stock, 10) || 0);
+
+        if (!nombreFinal || !descripcionFinal || precioFinal <= 0) {
+            return res.status(400).json({ ok: false, mensaje: 'Completa nombre, descripción y precio.' });
+        }
+
+        db.run(
+            `INSERT INTO productos (nombre, categoria, descripcion, precio, imagen_url, stock, activo, actualizado_en)
+             VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+            [nombreFinal, categoriaFinal, descripcionFinal, precioFinal, imagenFinal, stockFinal],
+            function(error) {
+                if (error) {
+                    return res.status(500).json({ ok: false, mensaje: 'No se pudo crear el producto.' });
+                }
+
+                res.status(201).json({ ok: true, mensaje: 'Producto creado correctamente.', id: this.lastID });
+            }
+        );
+    });
+});
+
+app.put('/api/productos/:id', (req, res) => {
+    const { nombre, categoria, descripcion, precio, imagen_url, stock, adminEmail } = req.body || {};
+    const productoId = parseInt(req.params.id, 10);
+
+    validarAdminPorCorreo(adminEmail, res, () => {
+        db.run(
+            `UPDATE productos
+             SET nombre = ?, categoria = ?, descripcion = ?, precio = ?, imagen_url = ?, stock = ?, actualizado_en = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [
+                String(nombre || '').trim(),
+                String(categoria || '').trim() || 'General',
+                String(descripcion || '').trim(),
+                Number(precio || 0),
+                String(imagen_url || '').trim(),
+                Math.max(0, parseInt(stock, 10) || 0),
+                productoId
+            ],
+            function(error) {
+                if (error) {
+                    return res.status(500).json({ ok: false, mensaje: 'No se pudo actualizar el producto.' });
+                }
+
+                if (!this.changes) {
+                    return res.status(404).json({ ok: false, mensaje: 'Producto no encontrado.' });
+                }
+
+                res.json({ ok: true, mensaje: 'Producto actualizado correctamente.' });
+            }
+        );
+    });
+});
+
+app.delete('/api/productos/:id', (req, res) => {
+    const productoId = parseInt(req.params.id, 10);
+    const adminEmail = req.query.adminEmail || req.headers['x-admin-email'];
+
+    validarAdminPorCorreo(adminEmail, res, () => {
+        db.run(
+            'UPDATE productos SET activo = 0, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?',
+            [productoId],
+            function(error) {
+                if (error) {
+                    return res.status(500).json({ ok: false, mensaje: 'No se pudo eliminar el producto.' });
+                }
+
+                if (!this.changes) {
+                    return res.status(404).json({ ok: false, mensaje: 'Producto no encontrado.' });
+                }
+
+                res.json({ ok: true, mensaje: 'Producto eliminado correctamente.' });
+            }
+        );
+    });
+});
+
+app.post('/api/compras', (req, res) => {
+    const productoId = parseInt(req.body?.productoId, 10);
+    const cantidad = Math.max(1, parseInt(req.body?.cantidad, 10) || 1);
+    const compradorNombre = String(req.body?.nombreComprador || 'Cliente web').trim();
+    const compradorEmail = String(req.body?.emailComprador || '').trim().toLowerCase();
+
+    if (!productoId) {
+        return res.status(400).json({ ok: false, mensaje: 'Producto inválido.' });
+    }
+
+    db.get('SELECT * FROM productos WHERE id = ? AND activo = 1 LIMIT 1', [productoId], (error, producto) => {
+        if (error) {
+            return res.status(500).json({ ok: false, mensaje: 'No se pudo validar el producto.' });
+        }
+
+        if (!producto) {
+            return res.status(404).json({ ok: false, mensaje: 'El producto ya no está disponible.' });
+        }
+
+        if (producto.stock < cantidad) {
+            return res.status(400).json({ ok: false, mensaje: 'No hay suficiente stock para esta compra.' });
+        }
+
+        const total = Number(producto.precio) * cantidad;
+
+        db.serialize(() => {
+            db.run(
+                `INSERT INTO ventas (producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [producto.id, producto.nombre, cantidad, total, compradorNombre, compradorEmail]
+            );
+
+            db.run(
+                'UPDATE productos SET stock = stock - ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?',
+                [cantidad, producto.id],
+                (updateError) => {
+                    if (updateError) {
+                        return res.status(500).json({ ok: false, mensaje: 'No se pudo registrar la compra.' });
+                    }
+
+                    res.status(201).json({
+                        ok: true,
+                        mensaje: `Compra registrada: ${producto.nombre}`,
+                        total
+                    });
+                }
+            );
+        });
+    });
+});
+
+app.get('/api/dashboard/stats', (req, res) => {
+    const respuesta = {
+        ok: true,
+        totalProductos: 0,
+        ventasHoy: 0,
+        ingresosHoy: 0,
+        ventasPorDia: [],
+        ventasRecientes: []
+    };
+
+    db.get('SELECT COUNT(*) AS total FROM productos WHERE activo = 1', [], (errorProductos, rowProductos) => {
+        if (errorProductos) {
+            return res.status(500).json({ ok: false, mensaje: 'No se pudieron cargar las métricas.' });
+        }
+
+        respuesta.totalProductos = rowProductos?.total || 0;
+
+        db.get(
+            `SELECT COUNT(*) AS ventasHoy, COALESCE(SUM(total), 0) AS ingresosHoy
+             FROM ventas
+             WHERE date(fecha, 'localtime') = date('now', 'localtime')`,
+            [],
+            (errorVentasHoy, rowVentasHoy) => {
+                if (errorVentasHoy) {
+                    return res.status(500).json({ ok: false, mensaje: 'No se pudieron cargar las ventas del día.' });
+                }
+
+                respuesta.ventasHoy = rowVentasHoy?.ventasHoy || 0;
+                respuesta.ingresosHoy = rowVentasHoy?.ingresosHoy || 0;
+
+                db.all(
+                    `SELECT strftime('%Y-%m-%d', fecha, 'localtime') AS dia, SUM(cantidad) AS total
+                     FROM ventas
+                     WHERE datetime(fecha) >= datetime('now', '-6 days')
+                     GROUP BY strftime('%Y-%m-%d', fecha, 'localtime')
+                     ORDER BY dia ASC`,
+                    [],
+                    (errorGrafica, ventasPorDia) => {
+                        if (errorGrafica) {
+                            return res.status(500).json({ ok: false, mensaje: 'No se pudo generar la gráfica.' });
+                        }
+
+                        respuesta.ventasPorDia = ventasPorDia || [];
+
+                        db.all(
+                            `SELECT producto_nombre, cantidad, total, comprador_nombre, fecha
+                             FROM ventas
+                             ORDER BY datetime(fecha) DESC
+                             LIMIT 8`,
+                            [],
+                            (errorRecientes, ventasRecientes) => {
+                                if (errorRecientes) {
+                                    return res.status(500).json({ ok: false, mensaje: 'No se pudieron cargar las ventas recientes.' });
+                                }
+
+                                respuesta.ventasRecientes = ventasRecientes || [];
+                                res.json(respuesta);
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    });
+});
+
 app.get('/api/kimbin-note', (req, res) => {
     db.get('SELECT mensaje, autor_email, actualizado_en FROM notas_kimbin WHERE id = 1', [], (error, nota) => {
         if (error) {
@@ -230,7 +561,7 @@ app.post('/api/kimbin-note', (req, res) => {
         }
 
         db.run(
-            `UPDATE notas_kimbin SET mensaje = ?, autor_email = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = 1`,
+            'UPDATE notas_kimbin SET mensaje = ?, autor_email = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = 1',
             [texto, correo],
             function(updateError) {
                 if (updateError) {

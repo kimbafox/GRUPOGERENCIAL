@@ -59,7 +59,9 @@ header::after {
 }
 
 .brand-wrap,
-header > div:last-child {
+header > div:last-child,
+.admin-inline-actions,
+.brand-copy {
     position: relative;
     z-index: 1;
 }
@@ -93,7 +95,7 @@ header > div:last-child {
 }
 
 main {
-    max-width: 1050px;
+    max-width: 1180px;
     margin: 0 auto;
     padding: 26px;
 }
@@ -140,7 +142,8 @@ section {
 }
 
 .hero-panel p,
-.info-panel p {
+.info-panel p,
+.section-heading p {
     color: var(--muted);
     line-height: 1.55;
 }
@@ -154,7 +157,9 @@ section {
     padding: 22px 22px 8px;
 }
 
-.carousel-header h3 {
+.carousel-header h3,
+.section-heading h3,
+.chart-panel h3 {
     margin: 0 0 8px;
 }
 
@@ -237,6 +242,178 @@ section {
     background: #ef4444;
 }
 
+.catalog-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.catalog-card {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(10, 12, 17, 0.85);
+}
+
+.catalog-image-wrap {
+    min-height: 180px;
+    background: #0b0f15;
+}
+
+.catalog-image {
+    width: 100%;
+    height: 100%;
+    min-height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.catalog-content {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.catalog-category {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 5px 10px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    font-size: 0.82rem;
+}
+
+.catalog-content h3 {
+    margin: 0 0 8px;
+}
+
+.catalog-content p,
+.catalog-content small,
+.chart-summary {
+    color: var(--muted);
+}
+
+.catalog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.catalog-footer strong {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.catalog-actions,
+.admin-inline-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.catalog-loading,
+.chart-empty {
+    margin: 0;
+    color: #fecaca;
+}
+
+.metrics-panel {
+    display: grid;
+    gap: 18px;
+}
+
+.metric-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.metric-card {
+    padding: 18px;
+    background: rgba(10, 12, 17, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.metric-card span {
+    display: block;
+    color: #fca5a5;
+    margin-bottom: 8px;
+}
+
+.metric-card strong {
+    font-size: 1.6rem;
+}
+
+.chart-panel {
+    background: rgba(10, 12, 17, 0.82);
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.chart-bars {
+    min-height: 170px;
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    padding-top: 12px;
+}
+
+.chart-col {
+    flex: 1;
+    min-width: 48px;
+    text-align: center;
+}
+
+.chart-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: linear-gradient(180deg, #ef4444, #7f1d1d);
+    color: white;
+    padding-top: 6px;
+    min-height: 18px;
+}
+
+.chart-bar span {
+    font-size: 0.78rem;
+}
+
+.sales-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.sales-list li {
+    padding: 12px 14px;
+    background: rgba(10, 12, 17, 0.8);
+    border-left: 4px solid #ef4444;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+textarea,
+input {
+    display: block;
+    margin: 10px 0;
+    padding: 11px 12px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: #0b0f15;
+    color: white;
+}
+
 .modal {
     position: fixed;
     top: 0;
@@ -262,18 +439,6 @@ section {
 
 .oculto {
     display: none;
-}
-
-input {
-    display: block;
-    margin: 10px 0;
-    padding: 11px 12px;
-    width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    box-sizing: border-box;
-    background: #0b0f15;
-    color: white;
 }
 
 button {
@@ -380,7 +545,8 @@ button:hover {
 }
 
 #usuarios-estado,
-#kimbin-estado {
+#kimbin-estado,
+#productos-estado {
     color: #fecaca;
 }
 
@@ -417,6 +583,16 @@ button:hover {
     margin-bottom: 10px;
     background: #0b0f15;
     color: white;
+}
+
+@media (max-width: 800px) {
+    .catalog-card {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-image {
+        min-height: 220px;
+    }
 }
 
 @media (max-width: 640px) {
@@ -526,4 +702,11 @@ button:hover {
         width: 60px;
         height: 60px;
     }
+
+    .sales-list li,
+    .catalog-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
+
