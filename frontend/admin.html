@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <link rel="stylesheet" href="css/basico.css">
+</head>
+<body>
+
+<header>
+    <h1>Panel Administrador</h1>
+    <button onclick="logout()">Cerrar sesión</button>
+</header>
+
+<main>
+    <section>
+        <h2>Bienvenido Admin</h2>
+        <p id="usuario-info">Zona protegida.</p>
+        <p>Desde aquí puedes gestionar los correos autorizados guardados en la base de datos.</p>
+    </section>
+
+    <section>
+        <h2>Correos autorizados</h2>
+        <p>El sistema crea la tabla automáticamente y aquí puedes registrar Gmail u otros correos válidos.</p>
+
+        <div class="admin-grid">
+            <input type="text" id="nuevo-nombre" placeholder="Nombre del usuario">
+            <input type="email" id="nuevo-email" placeholder="usuario@gmail.com">
+            <input type="text" id="nuevo-password" placeholder="Contraseña inicial">
+        </div>
+
+        <button onclick="guardarUsuarioAutorizado()">Guardar correo</button>
+        <p id="usuarios-estado"></p>
+
+        <div class="tabla-wrap">
+            <table class="tabla-usuarios">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="usuarios-body">
+                    <tr>
+                        <td colspan="3">Cargando correos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<aside class="nota-lateral-admin">
+    <button class="nota-lateral-boton" type="button" onclick="toggleNotaGrupo()">Nota para el grupo</button>
+
+    <div id="notaGrupoPanel" class="nota-lateral-panel oculto">
+        <h2>Nota para KIMBIN</h2>
+        <p>Cualquier usuario autorizado puede dejar aquí una nota del grupo.</p>
+        <textarea id="kimbin-mensaje" rows="6" style="width:100%; padding:10px; border-radius:0; border:1px solid #cbd5e1; box-sizing:border-box;"></textarea>
+        <button onclick="guardarNotaKimbin()">Guardar nota</button>
+        <p id="kimbin-estado"></p>
+    </div>
+</aside>
+
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/kimbin.js"></script>
+<script>
+verificarAuth();
+cargarUsuariosAutorizados();
+</script>
+</body>
+</html>

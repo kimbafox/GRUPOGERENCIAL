@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merkateck</title>
+    <link rel="stylesheet" href="css/basico.css">
+</head>
+<body>
+
+<header>
+    <div class="brand-wrap">
+        <img id="brandLogo" class="brand-logo" src="assets/M.png" alt="Logo de Merkateck">
+        <div class="brand-copy">
+            <h1>Merkateck</h1>
+            <p>PROVICIONAL</p>
+        </div>
+    </div>
+    <div>
+        <button class="btn-acceso" onclick="mostrarLogin()">Login</button>
+    </div>
+</header>
+
+<main>
+    <section class="hero-panel">
+        <span class="hero-tag">Bienvenido</span>
+        <h2>LUGAR DE VENTAS.</h2>
+        <p>MERKATECK</p>
+    </section>
+
+    <section class="info-panel">
+        <h3>Nuestro enfoque</h3>
+        <p>Innovación, confianza y resultados para cada proyecto.</p>
+    </section>
+
+    <section id="login" class="modal oculto">
+        <div class="modal-content">
+            <h2>Iniciar sesión</h2>
+            <input type="email" id="correo" placeholder="usuario@gmail.com" required>
+            <input type="password" id="password" placeholder="Tu contraseña" required>
+
+            <button onclick="login()">Ingresar</button>
+            <button onclick="cerrarLogin()">Cancelar</button>
+        </div>
+    </section>
+</main>
+
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/kimbin.js"></script>
+</body>
+</html>
