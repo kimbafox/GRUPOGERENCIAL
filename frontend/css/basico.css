@@ -135,6 +135,98 @@ section {
     line-height: 1.55;
 }
 
+.promo-carousel {
+    padding: 0 0 18px;
+    overflow: hidden;
+}
+
+.carousel-header {
+    padding: 22px 22px 8px;
+}
+
+.carousel-header h3 {
+    margin: 0 0 8px;
+}
+
+.carousel-header p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.carousel-wrapper {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px 1fr 58px 44px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+}
+
+.carousel-viewport {
+    flex: 1;
+    min-height: 380px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(7, 9, 13, 0.92);
+    overflow: hidden;
+}
+
+.carousel-track {
+    position: relative;
+    min-height: 380px;
+}
+
+.carousel-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+    background: #0b0f15;
+}
+
+.carousel-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.carousel-slide img {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    display: block;
+}
+
+.carousel-control {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    border-radius: 0;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.carousel-side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.carousel-dot {
+    width: 100%;
+    height: 40px;
+    padding: 0;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: none;
+    font-weight: bold;
+}
+
+.carousel-dot.active {
+    background: #ef4444;
+}
+
 .modal {
     position: fixed;
     top: 0;
@@ -326,6 +418,25 @@ button:hover {
 
     .nota-lateral-panel {
         width: auto;
+    }
+
+    .carousel-wrapper {
+        grid-template-columns: 1fr;
+        padding: 0 10px;
+    }
+
+    .carousel-side-nav {
+        order: 3;
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .carousel-control {
+        width: 100%;
+    }
+
+    .carousel-slide img {
+        height: 200px;
     }
 
     header {
