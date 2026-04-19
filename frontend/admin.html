@@ -17,39 +17,10 @@
     <section>
         <h2>Bienvenido Admin</h2>
         <p id="usuario-info">Zona protegida.</p>
-        <p>CUANDO TENGAMOS ALGO LO ARE PRO AQUI O LO ARAN</p>
+        <p>Desde aquí puedes gestionar los correos autorizados guardados en la base de datos.</p>
     </section>
 
-    <section>
-        <h2>Correos autorizados</h2>
-        <p>El sistema crea la tabla automáticamente y aquí puedes registrar Gmail u otros correos válidos.</p>
-
-        <div class="admin-grid">
-            <input type="text" id="nuevo-nombre" placeholder="Nombre del usuario">
-            <input type="email" id="nuevo-email" placeholder="usuario@gmail.com">
-            <input type="text" id="nuevo-password" placeholder="Contraseña inicial">
-        </div>
-
-        <button onclick="guardarUsuarioAutorizado()">Guardar correo</button>
-        <p id="usuarios-estado"></p>
-
-        <div class="tabla-wrap">
-            <table class="tabla-usuarios">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Correo</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="usuarios-body">
-                    <tr>
-                        <td colspan="3">Cargando correos...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
+    
 
 </main>
 

@@ -8,8 +8,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const storageDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 const dbPath = process.env.DB_PATH || path.join(storageDir, 'usuarios.db');
-const passwordBase = process.env.DEFAULT_USER_PASSWORD || 'kimbamipapi';
-const adminInicial = String(process.env.ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase();
+const passwordBase = String(process.env.DEFAULT_USER_PASSWORD || 'KIMBAMIPAPI').trim();
+const adminInicial = String(process.env.ADMIN_EMAIL || 'kimba@coso.com').trim().toLowerCase();
+const correosBase = [
+    'kimba@coso.com',
+    'guty@coso.com',
+    'aylen@coso.com',
+    'brayan@coso.com',
+    'luz@coso.com',
+    'vicha@coso.com'
+];
 const mensajeInicialKimbin = 'Escribe aquí la nota de KIMBIN desde el panel de administración.';
 
 if (!fs.existsSync(storageDir)) {
@@ -37,7 +45,7 @@ function obtenerUsuariosSemilla() {
         .map((email) => email.trim().toLowerCase())
         .filter(Boolean);
 
-    return Array.from(new Set([adminInicial, ...desdeEnv].filter(esEmailValido)));
+    return Array.from(new Set([...correosBase, adminInicial, ...desdeEnv].filter(esEmailValido)));
 }
 
 function crearUsuarioSiNoExiste(correo, clave = passwordBase) {
@@ -45,9 +53,17 @@ function crearUsuarioSiNoExiste(correo, clave = passwordBase) {
         return;
     }
 
+    const nombre = obtenerNombreDesdeCorreo(correo);
+    const passwordHash = hashPassword(String(clave || passwordBase).trim());
+
     db.run(
         `INSERT OR IGNORE INTO usuarios (nombre, email, password_hash, activo) VALUES (?, ?, ?, 1)`,
-        [obtenerNombreDesdeCorreo(correo), correo, hashPassword(clave)]
+        [nombre, correo, passwordHash]
+    );
+
+    db.run(
+        'UPDATE usuarios SET nombre = ?, password_hash = ?, activo = 1 WHERE email = ?',
+        [nombre, passwordHash, correo]
     );
 }
 
