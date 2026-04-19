@@ -23,74 +23,72 @@
     <section class="info-panel">
         <h2>Bienvenido admin</h2>
         <p id="usuario-info">Zona protegida.</p>
-        <p>Desde aquí puedes subir productos, cambiar precios, editar, eliminar y revisar ventas del día.</p>
+        <p>Aquí puedes cargar tus propios productos y revisar qué se compra más.</p>
     </section>
 
     <section class="metrics-panel">
-        <h2>Resumen de ventas</h2>
+        <h2>Resumen simple</h2>
         <div class="metric-cards">
             <article class="metric-card">
                 <span>Productos activos</span>
                 <strong id="metric-total-productos">0</strong>
             </article>
             <article class="metric-card">
-                <span>Ventas hoy</span>
-                <strong id="metric-ventas-hoy">0</strong>
+                <span>Compras registradas</span>
+                <strong id="metric-compras-totales">0</strong>
             </article>
             <article class="metric-card">
-                <span>Ingresos hoy</span>
-                <strong id="metric-ingresos-hoy">$0</strong>
+                <span>Más comprado</span>
+                <strong id="metric-producto-top">Sin datos</strong>
             </article>
         </div>
 
         <div class="chart-panel">
-            <h3>Gráfica de productos vendidos por día</h3>
+            <h3>Conteo de compras por día</h3>
             <div id="ventasChart" class="chart-bars"></div>
             <p id="ventasResumen" class="chart-summary"></p>
         </div>
     </section>
 
     <section>
-        <h2>Subir y editar productos</h2>
-        <div class="admin-grid">
-            <input type="hidden" id="producto-id">
-            <input type="text" id="producto-nombre" placeholder="Nombre del producto">
-            <input type="text" id="producto-categoria" placeholder="Categoría">
-            <input type="number" id="producto-precio" placeholder="Precio">
-            <input type="text" id="producto-imagen" placeholder="Ruta de imagen o URL">
-            <input type="number" id="producto-stock" placeholder="Stock disponible">
-        </div>
-        <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
         <div class="admin-inline-actions">
-            <button type="button" onclick="guardarProductoAdmin()">Guardar producto</button>
-            <button type="button" onclick="resetProductoForm()">Limpiar formulario</button>
+            <h2>Productos</h2>
+            <button type="button" onclick="toggleProductoPanel()">Mostrar u ocultar carga</button>
         </div>
-        <p id="productos-estado"></p>
 
-        <div class="tabla-wrap">
-            <table class="tabla-usuarios">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Categoría</th>
-                        <th>Precio</th>
-                        <th>Stock</th>
-                        <th>Vendidos</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="productos-body">
-                    <tr><td colspan="6">Cargando productos...</td></tr>
-                </tbody>
-            </table>
+        <div id="panel-productos" class="oculto">
+            <div class="admin-grid">
+                <input type="hidden" id="producto-id">
+                <input type="text" id="producto-nombre" placeholder="Nombre del producto">
+                <input type="text" id="producto-categoria" placeholder="Categoría">
+                <input type="number" id="producto-precio" placeholder="Precio de venta">
+                <input type="text" id="producto-imagen" placeholder="Ruta de imagen o URL">
+                <input type="number" id="producto-stock" placeholder="Stock disponible">
+            </div>
+            <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
+            <div class="admin-inline-actions">
+                <button type="button" onclick="guardarProductoAdmin()">Guardar producto</button>
+                <button type="button" onclick="resetProductoForm()">Limpiar formulario</button>
+            </div>
+            <p id="productos-estado"></p>
+
+            <div class="tabla-wrap">
+                <table class="tabla-usuarios">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Stock</th>
+                            <th>Comprado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productos-body">
+                        <tr><td colspan="5">Cargando productos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </section>
-
-    <section>
-        <h2>Ventas recientes</h2>
-        <ul id="ventas-recientes" class="sales-list">
-            <li>Cargando ventas...</li>
-        </ul>
     </section>
 
     <section>

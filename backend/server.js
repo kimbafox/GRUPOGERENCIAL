@@ -19,40 +19,6 @@ const correosBase = [
     'vicha@coso.com'
 ];
 const mensajeInicialKimbin = 'Escribe aquí la nota de KIMBIN desde el panel de administración.';
-const catalogoSemilla = [
-    {
-        nombre: 'Plan Marketing Digital',
-        categoria: 'Marketing',
-        descripcion: 'Impulsa tus ventas con campañas, diseño visual y acompañamiento comercial para tu marca.',
-        precio: 120000,
-        imagen_url: 'assets/TU%20MEJOR%20OPCIONES.png',
-        stock: 20
-    },
-    {
-        nombre: 'Diseño Corporativo',
-        categoria: 'Branding',
-        descripcion: 'Creamos piezas gráficas, identidad visual y presencia profesional para tu empresa.',
-        precio: 95000,
-        imagen_url: 'assets/QUIENES.png',
-        stock: 15
-    },
-    {
-        nombre: 'Gestión de Cuentas',
-        categoria: 'Administración',
-        descripcion: 'Organiza clientes, pagos y seguimiento comercial con una solución rápida y clara.',
-        precio: 78000,
-        imagen_url: 'assets/CUENTA.png',
-        stock: 30
-    },
-    {
-        nombre: 'Campaña Premium',
-        categoria: 'Ventas',
-        descripcion: 'Servicio integral para destacar productos, mejorar conversiones y mantener flujo de ventas diario.',
-        precio: 160000,
-        imagen_url: 'assets/ALGUN%20DIA.png',
-        stock: 12
-    }
-];
 
 if (!fs.existsSync(storageDir)) {
     fs.mkdirSync(storageDir, { recursive: true });
@@ -129,27 +95,29 @@ function validarAdminPorCorreo(correo, res, callback) {
     });
 }
 
-function sembrarProductosSiHaceFalta() {
-    db.get('SELECT COUNT(*) AS total FROM productos', [], (error, row) => {
-        if (error || (row?.total || 0) > 0) {
-            return;
-        }
-
-        catalogoSemilla.forEach((producto) => {
-            db.run(
-                `INSERT INTO productos (nombre, categoria, descripcion, precio, imagen_url, stock, activo)
-                 VALUES (?, ?, ?, ?, ?, ?, 1)`,
-                [
-                    producto.nombre,
-                    producto.categoria,
-                    producto.descripcion,
-                    producto.precio,
-                    producto.imagen_url,
-                    producto.stock
-                ]
-            );
-        });
-    });
+function migrarVentasLegacyACompras() {
+    db.run(
+        `INSERT OR IGNORE INTO compras (
+            legacy_venta_id,
+            producto_id,
+            producto_nombre,
+            cantidad,
+            total,
+            comprador_nombre,
+            comprador_email,
+            fecha
+        )
+        SELECT
+            id,
+            producto_id,
+            producto_nombre,
+            cantidad,
+            total,
+            comprador_nombre,
+            comprador_email,
+            fecha
+        FROM ventas`
+    );
 }
 
 function inicializarBaseDeDatos() {
@@ -211,6 +179,22 @@ function inicializarBaseDeDatos() {
             )
         `);
 
+        db.run(`
+            CREATE TABLE IF NOT EXISTS compras (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                legacy_venta_id INTEGER UNIQUE,
+                producto_id INTEGER,
+                producto_nombre TEXT NOT NULL,
+                cantidad INTEGER NOT NULL DEFAULT 1,
+                total REAL NOT NULL DEFAULT 0,
+                comprador_nombre TEXT,
+                comprador_email TEXT,
+                fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+                creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (producto_id) REFERENCES productos (id)
+            )
+        `);
+
         obtenerUsuariosSemilla().forEach((correo) => {
             crearUsuarioSiNoExiste(correo);
         });
@@ -220,7 +204,7 @@ function inicializarBaseDeDatos() {
             [mensajeInicialKimbin, 'sistema@merkateck.com']
         );
 
-        sembrarProductosSiHaceFalta();
+        migrarVentasLegacyACompras();
     });
 }
 
@@ -307,9 +291,9 @@ app.post('/api/usuarios', (req, res) => {
 app.get('/api/productos', (req, res) => {
     db.all(
         `SELECT p.id, p.nombre, p.categoria, p.descripcion, p.precio, p.imagen_url, p.stock, p.activo,
-                p.creado_en, p.actualizado_en, COALESCE(SUM(v.cantidad), 0) AS vendidos
+                p.creado_en, p.actualizado_en, COALESCE(SUM(c.cantidad), 0) AS vendidos
          FROM productos p
-         LEFT JOIN ventas v ON v.producto_id = p.id
+         LEFT JOIN compras c ON c.producto_id = p.id
          WHERE p.activo = 1
          GROUP BY p.id
          ORDER BY p.actualizado_en DESC, p.id DESC`,
@@ -437,7 +421,7 @@ app.post('/api/compras', (req, res) => {
 
         db.serialize(() => {
             db.run(
-                `INSERT INTO ventas (producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
+                `INSERT INTO compras (producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
                  VALUES (?, ?, ?, ?, ?, ?)`,
                 [producto.id, producto.nombre, cantidad, total, compradorNombre, compradorEmail]
             );
@@ -465,10 +449,9 @@ app.get('/api/dashboard/stats', (req, res) => {
     const respuesta = {
         ok: true,
         totalProductos: 0,
-        ventasHoy: 0,
-        ingresosHoy: 0,
-        ventasPorDia: [],
-        ventasRecientes: []
+        comprasTotales: 0,
+        productoMasComprado: null,
+        ventasPorDia: []
     };
 
     db.get('SELECT COUNT(*) AS total FROM productos WHERE activo = 1', [], (errorProductos, rowProductos) => {
@@ -479,44 +462,42 @@ app.get('/api/dashboard/stats', (req, res) => {
         respuesta.totalProductos = rowProductos?.total || 0;
 
         db.get(
-            `SELECT COUNT(*) AS ventasHoy, COALESCE(SUM(total), 0) AS ingresosHoy
-             FROM ventas
-             WHERE date(fecha, 'localtime') = date('now', 'localtime')`,
+            'SELECT COALESCE(SUM(cantidad), 0) AS comprasTotales FROM compras',
             [],
-            (errorVentasHoy, rowVentasHoy) => {
-                if (errorVentasHoy) {
-                    return res.status(500).json({ ok: false, mensaje: 'No se pudieron cargar las ventas del día.' });
+            (errorCompras, rowCompras) => {
+                if (errorCompras) {
+                    return res.status(500).json({ ok: false, mensaje: 'No se pudo contar las compras.' });
                 }
 
-                respuesta.ventasHoy = rowVentasHoy?.ventasHoy || 0;
-                respuesta.ingresosHoy = rowVentasHoy?.ingresosHoy || 0;
+                respuesta.comprasTotales = rowCompras?.comprasTotales || 0;
 
-                db.all(
-                    `SELECT strftime('%Y-%m-%d', fecha, 'localtime') AS dia, SUM(cantidad) AS total
-                     FROM ventas
-                     WHERE datetime(fecha) >= datetime('now', '-6 days')
-                     GROUP BY strftime('%Y-%m-%d', fecha, 'localtime')
-                     ORDER BY dia ASC`,
+                db.get(
+                    `SELECT producto_nombre, SUM(cantidad) AS total
+                     FROM compras
+                     GROUP BY producto_nombre
+                     ORDER BY total DESC, producto_nombre ASC
+                     LIMIT 1`,
                     [],
-                    (errorGrafica, ventasPorDia) => {
-                        if (errorGrafica) {
-                            return res.status(500).json({ ok: false, mensaje: 'No se pudo generar la gráfica.' });
+                    (errorTop, rowTop) => {
+                        if (errorTop) {
+                            return res.status(500).json({ ok: false, mensaje: 'No se pudo calcular el producto más comprado.' });
                         }
 
-                        respuesta.ventasPorDia = ventasPorDia || [];
+                        respuesta.productoMasComprado = rowTop || null;
 
                         db.all(
-                            `SELECT producto_nombre, cantidad, total, comprador_nombre, fecha
-                             FROM ventas
-                             ORDER BY datetime(fecha) DESC
-                             LIMIT 8`,
+                            `SELECT strftime('%Y-%m-%d', fecha, 'localtime') AS dia, SUM(cantidad) AS total
+                             FROM compras
+                             WHERE datetime(fecha) >= datetime('now', '-6 days')
+                             GROUP BY strftime('%Y-%m-%d', fecha, 'localtime')
+                             ORDER BY dia ASC`,
                             [],
-                            (errorRecientes, ventasRecientes) => {
-                                if (errorRecientes) {
-                                    return res.status(500).json({ ok: false, mensaje: 'No se pudieron cargar las ventas recientes.' });
+                            (errorGrafica, ventasPorDia) => {
+                                if (errorGrafica) {
+                                    return res.status(500).json({ ok: false, mensaje: 'No se pudo generar la gráfica.' });
                                 }
 
-                                respuesta.ventasRecientes = ventasRecientes || [];
+                                respuesta.ventasPorDia = ventasPorDia || [];
                                 res.json(respuesta);
                             }
                         );

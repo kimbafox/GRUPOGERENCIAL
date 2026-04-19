@@ -86,7 +86,7 @@ async function cargarCatalogoVentas() {
         window.catalogoProductos = productos;
 
         if (!resultado.ok || productos.length === 0) {
-            contenedor.innerHTML = '<p class="catalog-loading">Aún no hay productos cargados.</p>';
+            contenedor.innerHTML = '<p class="catalog-loading">Aún no hay productos cargados. Súbelos desde el panel de admin.</p>';
             return;
         }
 

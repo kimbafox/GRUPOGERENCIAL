@@ -129,7 +129,7 @@ async function cargarProductosAdmin() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6">Cargando productos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">Cargando productos...</td></tr>';
 
     try {
         const resultado = await API.obtenerProductos();
@@ -137,7 +137,7 @@ async function cargarProductosAdmin() {
         window.adminProductos = productos;
 
         if (!resultado.ok || productos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">No hay productos creados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5">No hay productos creados.</td></tr>';
             return;
         }
 
@@ -145,7 +145,6 @@ async function cargarProductosAdmin() {
             <tr>
                 <td>${escapeHtml(producto.nombre)}</td>
                 <td>${escapeHtml(producto.categoria)}</td>
-                <td>${formatoCOP(producto.precio)}</td>
                 <td>${Number(producto.stock || 0)}</td>
                 <td>${Number(producto.vendidos || 0)}</td>
                 <td>
@@ -155,7 +154,14 @@ async function cargarProductosAdmin() {
             </tr>
         `).join('');
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar el catálogo admin.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar el catálogo admin.</td></tr>';
+    }
+}
+
+function toggleProductoPanel() {
+    const panel = document.getElementById('panel-productos');
+    if (panel) {
+        panel.classList.toggle('oculto');
     }
 }
 
@@ -178,6 +184,11 @@ function editarProducto(id) {
     const producto = (window.adminProductos || []).find((item) => Number(item.id) === Number(id));
     if (!producto) {
         return;
+    }
+
+    const panel = document.getElementById('panel-productos');
+    if (panel) {
+        panel.classList.remove('oculto');
     }
 
     document.getElementById('producto-id').value = producto.id;
@@ -293,27 +304,19 @@ async function cargarDashboardAdmin() {
         }
 
         const totalProductos = document.getElementById('metric-total-productos');
-        const ventasHoy = document.getElementById('metric-ventas-hoy');
-        const ingresosHoy = document.getElementById('metric-ingresos-hoy');
-        const listaVentas = document.getElementById('ventas-recientes');
+        const comprasTotales = document.getElementById('metric-compras-totales');
+        const productoTop = document.getElementById('metric-producto-top');
 
         if (totalProductos) totalProductos.textContent = Number(resultado.totalProductos || 0);
-        if (ventasHoy) ventasHoy.textContent = Number(resultado.ventasHoy || 0);
-        if (ingresosHoy) ingresosHoy.textContent = formatoCOP(resultado.ingresosHoy || 0);
+        if (comprasTotales) comprasTotales.textContent = Number(resultado.comprasTotales || 0);
+
+        if (productoTop) {
+            productoTop.textContent = resultado.productoMasComprado
+                ? `${resultado.productoMasComprado.producto_nombre} (${Number(resultado.productoMasComprado.total || 0)})`
+                : 'Sin datos';
+        }
 
         renderGraficaVentas(resultado.ventasPorDia || []);
-
-        if (listaVentas) {
-            const ventas = Array.isArray(resultado.ventasRecientes) ? resultado.ventasRecientes : [];
-            listaVentas.innerHTML = ventas.length
-                ? ventas.map((venta) => `
-                    <li>
-                        <strong>${escapeHtml(venta.producto_nombre)}</strong>
-                        <span>${Number(venta.cantidad || 0)} und. · ${formatoCOP(venta.total || 0)} · ${escapeHtml(venta.comprador_nombre || 'Cliente')}</span>
-                    </li>
-                `).join('')
-                : '<li>No hay ventas recientes todavía.</li>';
-        }
     } catch (error) {
         console.error('No se pudo cargar el dashboard', error);
     }
