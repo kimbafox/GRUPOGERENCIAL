@@ -72,6 +72,106 @@ function iniciarCarruselPromos() {
     setInterval(() => goTo(index + 1), 7000);
 }
 
+function obtenerFiltrosCatalogo() {
+    return {
+        busqueda: document.getElementById('filtro-busqueda')?.value?.trim().toLowerCase() || '',
+        categoria: document.getElementById('filtro-categoria')?.value || 'todas'
+    };
+}
+
+function poblarFiltrosCatalogo(productos) {
+    const categoriaSelect = document.getElementById('filtro-categoria');
+
+    if (!categoriaSelect) {
+        return;
+    }
+
+    const categorias = Array.from(new Set(productos.map((producto) => String(producto.categoria || '').trim()).filter(Boolean))).sort();
+
+    categoriaSelect.innerHTML = ['<option value="todas">Todas las categorías</option>']
+        .concat(categorias.map((categoria) => `<option value="${escaparHtml(categoria)}">${escaparHtml(categoria)}</option>`))
+        .join('');
+}
+
+function filtrarProductos(productos) {
+    const filtros = obtenerFiltrosCatalogo();
+
+    return productos.filter((producto) => {
+        const textoBase = `${producto.nombre || ''} ${producto.descripcion || ''} ${producto.categoria || ''}`.toLowerCase();
+        const categoriaOk = filtros.categoria === 'todas' || String(producto.categoria || '') === filtros.categoria;
+        const busquedaOk = !filtros.busqueda || textoBase.includes(filtros.busqueda);
+
+        return categoriaOk && busquedaOk;
+    });
+}
+
+function renderCatalogo(productos) {
+    const contenedor = document.getElementById('catalogo-grid');
+    if (!contenedor) {
+        return;
+    }
+
+    const productosTienda = productos.filter((producto) => producto.origen_producto === 'tienda');
+    const productosVendedores = productos.filter((producto) => producto.origen_producto === 'vendedor');
+
+    const renderGrupo = (titulo, descripcion, items, mostrarVendedor) => `
+        <section class="catalog-group">
+            <div class="section-heading">
+                <h3>${escaparHtml(titulo)}</h3>
+                <p>${escaparHtml(descripcion)}</p>
+            </div>
+            <div class="catalog-grid catalog-grid-inner">
+                ${items.length ? items.map((producto) => `
+                    <article class="catalog-card">
+                        <div class="catalog-image-wrap">
+                            <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
+                        </div>
+                        <div class="catalog-content">
+                            <div>
+                                <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
+                                <h3>${escaparHtml(producto.nombre)}</h3>
+                                <p>${escaparHtml(producto.descripcion || 'Producto disponible para compra inmediata.')}</p>
+                                ${mostrarVendedor ? `<small class="catalog-owner">Vendedor: ${escaparHtml(producto.vendedor_nombre || 'Vendedor registrado')}</small>` : ''}
+                            </div>
+                            <div class="catalog-footer">
+                                <div>
+                                    <strong>${formatoMoneda(producto.precio)}</strong>
+                                    <small>Stock disponible: ${Number(producto.stock || 0)}</small>
+                                </div>
+                                <div class="catalog-actions">
+                                    <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
+                                    <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                `).join('') : '<p class="catalog-loading">No hay productos en esta sección por ahora.</p>'}
+            </div>
+        </section>
+    `;
+
+    if (!productos.length) {
+        contenedor.innerHTML = '<p class="catalog-loading">No se encontraron productos con esos filtros.</p>';
+        return;
+    }
+
+    contenedor.innerHTML = [
+        renderGrupo('Productos de la tienda', 'Catálogo principal publicado directamente por la página.', productosTienda, false),
+        renderGrupo('Productos de vendedores', 'Publicaciones cargadas por vendedores autorizados dentro de la plataforma.', productosVendedores, true)
+    ].join('');
+}
+
+function activarFiltrosCatalogo() {
+    const ids = ['filtro-busqueda', 'filtro-categoria'];
+    ids.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', () => renderCatalogo(filtrarProductos(window.catalogoProductosOriginal || [])));
+            element.addEventListener('change', () => renderCatalogo(filtrarProductos(window.catalogoProductosOriginal || [])));
+        }
+    });
+}
+
 async function cargarCatalogoVentas() {
     const contenedor = document.getElementById('catalogo-grid');
     if (!contenedor) {
@@ -83,55 +183,16 @@ async function cargarCatalogoVentas() {
     try {
         const resultado = await API.obtenerProductos();
         const productos = Array.isArray(resultado.productos) ? resultado.productos : [];
-        const productosTienda = Array.isArray(resultado.productosTienda) ? resultado.productosTienda : productos.filter((producto) => producto.origen_producto === 'tienda');
-        const productosVendedores = Array.isArray(resultado.productosVendedores) ? resultado.productosVendedores : productos.filter((producto) => producto.origen_producto === 'vendedor');
         window.catalogoProductos = productos;
+        window.catalogoProductosOriginal = productos;
 
         if (!resultado.ok || productos.length === 0) {
             contenedor.innerHTML = '<p class="catalog-loading">Aún no hay productos cargados. Súbelos desde el panel de admin.</p>';
             return;
         }
 
-        const renderGrupo = (titulo, descripcion, items, mostrarVendedor) => `
-            <section class="catalog-group">
-                <div class="section-heading">
-                    <h3>${escaparHtml(titulo)}</h3>
-                    <p>${escaparHtml(descripcion)}</p>
-                </div>
-                <div class="catalog-grid catalog-grid-inner">
-                    ${items.length ? items.map((producto) => `
-            <article class="catalog-card">
-                <div class="catalog-image-wrap">
-                    <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
-                </div>
-                <div class="catalog-content">
-                    <div>
-                        <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
-                        <h3>${escaparHtml(producto.nombre)}</h3>
-                        <p>${escaparHtml(producto.descripcion || 'Producto disponible para compra inmediata.')}</p>
-                        ${mostrarVendedor ? `<small class="catalog-owner">Vendedor: ${escaparHtml(producto.vendedor_nombre || 'Vendedor registrado')}</small>` : ''}
-                    </div>
-                    <div class="catalog-footer">
-                        <div>
-                            <strong>${formatoMoneda(producto.precio)}</strong>
-                            <small>Stock disponible: ${Number(producto.stock || 0)}</small>
-                        </div>
-                        <div class="catalog-actions">
-                            <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
-                            <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
-                        </div>
-                    </div>
-                </div>
-            </article>
-        `).join('') : '<p class="catalog-loading">No hay productos en esta sección por ahora.</p>'}
-                </div>
-            </section>
-        `;
-
-        contenedor.innerHTML = [
-            renderGrupo('Productos de la tienda', 'Catálogo principal publicado directamente por la página.', productosTienda, false),
-            renderGrupo('Productos de vendedores', 'Publicaciones cargadas por vendedores autorizados dentro de la plataforma.', productosVendedores, true)
-        ].join('');
+        poblarFiltrosCatalogo(productos);
+        renderCatalogo(filtrarProductos(productos));
     } catch (error) {
         contenedor.innerHTML = '<p class="catalog-loading">No se pudo cargar el catálogo.</p>';
     }
@@ -184,5 +245,6 @@ async function comprarProducto(id) {
 
 document.addEventListener('DOMContentLoaded', () => {
     iniciarCarruselPromos();
+    activarFiltrosCatalogo();
     cargarCatalogoVentas();
 });

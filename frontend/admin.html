@@ -11,26 +11,46 @@
 <header>
     <div class="brand-copy">
         <h1 id="panel-title">Panel de administración</h1>
-        <p id="panel-subtitle">Gestiona productos propios, vendedores y accesos del sistema.</p>
+        <p id="panel-subtitle">Gestiona el sistema.</p>
       
     </div>
     <div class="admin-inline-actions">
+        
         <button type="button" onclick="window.location.href='index.html'">Ver tienda</button>
         <button type="button" onclick="logout()">Cerrar sesión</button>
     </div>
 </header>
 
 <main>
-    <section class="info-panel">
+    <section class="info-panel admin-hero-panel">
         <div class="admin-inline-actions">
             <h2>Bienvenido</h2>
             <span id="usuario-role-badge" class="catalog-category">Administrador</span>
         </div>
         <p id="usuario-info">Zona protegida.</p>
-        
+        <div class="feature-grid compact-features">
+            <article class="feature-card">
+                <h3>Resumen</h3>
+            </article>
+            <article class="feature-card">
+                <h3>Productos</h3>
+            </article>
+            <article class="feature-card" data-admin-only="true">
+                <h3>Usuarios</h3>
+            </article>
+        </div>
     </section>
 
-    <section class="metrics-panel">
+    <section class="panel-tabs-shell">
+        <div class="panel-tabs">
+            <button type="button" class="panel-tab active" data-panel-tab="resumen" onclick="activarPanelTab('resumen')">Resumen</button>
+            <button type="button" class="panel-tab" data-panel-tab="productos" onclick="activarPanelTab('productos')">Productos</button>
+            <button type="button" class="panel-tab" data-panel-tab="ventas" onclick="activarPanelTab('ventas')">Ventas</button>
+            <button type="button" class="panel-tab" data-panel-tab="usuarios" data-admin-only="true" onclick="activarPanelTab('usuarios')">Usuarios</button>
+        </div>
+    </section>
+
+    <section id="resumen" class="metrics-panel panel-section active">
         <h2>Resumen operativo</h2>
         <div class="metric-cards">
             <article class="metric-card">
@@ -62,11 +82,10 @@
         </div>
     </section>
 
-    <section class="product-upload-section">
+    <section id="productos" class="product-upload-section panel-section oculto">
         <div class="upload-header">
             <div>
                 <h2>Subir producto</h2>
-                <p>Admin publica productos de la tienda. Los vendedores publican sus propios productos desde este mismo panel.</p>
             </div>
             <button id="toggle-producto-btn" type="button" onclick="toggleProductoPanel()">Abrir ventana de carga</button>
         </div>
@@ -151,9 +170,49 @@
         </div>
     </section>
 
-    <section data-admin-only="true">
+    <section id="ventas" class="panel-section oculto">
+        <div class="upload-header">
+            <div>
+                <h2>Historial de ventas</h2>
+            </div>
+            <div class="admin-inline-actions">
+                <button type="button" onclick="cargarHistorialVentas()">Actualizar historial</button>
+                <button type="button" onclick="exportarVentasCsv()">Exportar CSV</button>
+            </div>
+        </div>
+
+        <div class="catalog-filters admin-filters">
+            <input type="date" id="ventas-filtro-desde">
+            <input type="date" id="ventas-filtro-hasta">
+            <input type="text" id="ventas-filtro-producto" placeholder="Filtrar por producto o comprador">
+            <select id="ventas-filtro-origen">
+                <option value="todos">Todos los orígenes</option>
+                <option value="tienda">Solo tienda</option>
+                <option value="vendedor">Solo vendedores</option>
+            </select>
+        </div>
+
+        <div class="tabla-wrap">
+            <table class="tabla-usuarios">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Origen</th>
+                        <th>Comprador</th>
+                        <th>Cantidad</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="ventas-body">
+                    <tr><td colspan="6">Cargando ventas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="usuarios" class="panel-section oculto" data-admin-only="true">
         <h2>Administrar accesos</h2>
-        <p>Crea usuarios administradores, vendedores o clientes autorizados.</p>
         <div class="admin-grid">
             <input type="text" id="nuevo-nombre" placeholder="Nombre del usuario">
             <input type="email" id="nuevo-email" placeholder="Correo autorizado">
@@ -182,6 +241,30 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="upload-header history-subsection">
+            <div>
+                <h3>Historial de usuarios</h3>
+            </div>
+            <button type="button" onclick="cargarHistorialUsuarios()">Actualizar historial</button>
+        </div>
+
+        <div class="tabla-wrap">
+            <table class="tabla-usuarios">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Actor</th>
+                    </tr>
+                </thead>
+                <tbody id="historial-usuarios-body">
+                    <tr><td colspan="5">Cargando historial...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 </main>
 
@@ -190,7 +273,6 @@
 
     <div id="notaGrupoPanel" class="nota-lateral-panel oculto">
         <h2>Nota para KIMBIN</h2>
-        <p>Cualquier usuario autorizado puede dejar aquí una nota del grupo.</p>
         <textarea id="kimbin-mensaje" rows="6" style="width:100%; padding:10px; border-radius:0; border:1px solid #cbd5e1; box-sizing:border-box;"></textarea>
         <button onclick="guardarNotaKimbin()">Guardar nota</button>
         <p id="kimbin-estado"></p>
@@ -204,6 +286,8 @@
 verificarAuth();
 cargarUsuariosAutorizados();
 cargarProductosAdmin();
+cargarHistorialVentas();
+cargarHistorialUsuarios();
 cargarDashboardAdmin();
 </script>
 </body>

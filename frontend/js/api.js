@@ -1,8 +1,24 @@
 const API = {
     baseUrl: '',
 
+    getSessionToken() {
+        return sessionStorage.getItem('sessionToken') || '';
+    },
+
     async request(url, options = {}) {
-        const response = await fetch(`${this.baseUrl}${url}`, options);
+        const headers = {
+            ...(options.headers || {})
+        };
+        const sessionToken = this.getSessionToken();
+
+        if (sessionToken) {
+            headers.Authorization = `Bearer ${sessionToken}`;
+        }
+
+        const response = await fetch(`${this.baseUrl}${url}`, {
+            ...options,
+            headers
+        });
         const contentType = response.headers.get('content-type') || '';
         const payload = contentType.includes('application/json')
             ? await response.json()
@@ -14,6 +30,11 @@ const API = {
 
         if (!response.ok && !payload.mensaje) {
             payload.mensaje = 'La solicitud no pudo completarse.';
+        }
+
+        if ((response.status === 401 || response.status === 403) && url !== '/api/login') {
+            sessionStorage.removeItem('auth');
+            sessionStorage.removeItem('sessionToken');
         }
 
         return payload;
@@ -35,6 +56,10 @@ const API = {
 
     async obtenerUsuarios(adminEmail) {
         return this.request(`/api/usuarios?adminEmail=${encodeURIComponent(adminEmail || '')}`);
+    },
+
+    async obtenerHistorialUsuarios(adminEmail) {
+        return this.request(`/api/historial/usuarios?adminEmail=${encodeURIComponent(adminEmail || '')}`);
     },
 
     async guardarUsuario(usuario) {
@@ -82,6 +107,10 @@ const API = {
             },
             body: JSON.stringify(compra)
         });
+    },
+
+    async obtenerHistorialVentas(email) {
+        return this.request(`/api/historial/ventas?email=${encodeURIComponent(email || '')}`);
     },
 
     async obtenerDashboard(email) {

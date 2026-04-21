@@ -40,15 +40,13 @@ async function guardarNotaKimbin() {
     const mensaje = textarea.value.trim();
 
     try {
-        const response = await fetch('/api/kimbin-note', {
+        const data = await API.request('/api/kimbin-note', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ mensaje, email })
         });
-
-        const data = await response.json();
         estado.textContent = data.mensaje;
 
         if (data.ok) {

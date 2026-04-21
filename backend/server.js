@@ -12,6 +12,7 @@ const databaseMode = databaseUrl ? 'postgres' : 'sqlite';
 const storageDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 const dbPath = process.env.DB_PATH || path.join(storageDir, 'usuarios.db');
 const passwordBase = String(process.env.DEFAULT_USER_PASSWORD || 'KIMBAMIPAPI').trim();
+const sessionSecret = String(process.env.SESSION_SECRET || `${passwordBase}-merkateck-session`).trim();
 const adminInicial = String(process.env.ADMIN_EMAIL || 'kimba@coso.com').trim().toLowerCase();
 const correosBase = [
     'kimba@coso.com',
@@ -41,6 +42,73 @@ function crearErrorHttp(status, mensaje) {
 
 function hashPassword(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function toBase64Url(value) {
+    return Buffer.from(value)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
+}
+
+function fromBase64Url(value) {
+    const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+    const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+    return Buffer.from(`${normalized}${padding}`, 'base64').toString('utf8');
+}
+
+function firmarToken(payload) {
+    return crypto.createHmac('sha256', sessionSecret).update(payload).digest('hex');
+}
+
+function crearTokenSesion(usuario) {
+    const exp = Date.now() + (1000 * 60 * 60 * 12);
+    const payload = JSON.stringify({
+        id: usuario.id,
+        email: usuario.email,
+        role: normalizarRol(usuario.role, 'cliente'),
+        exp
+    });
+    const encodedPayload = toBase64Url(payload);
+    const signature = firmarToken(encodedPayload);
+    return `${encodedPayload}.${signature}`;
+}
+
+function verificarTokenSesion(token) {
+    const [encodedPayload, signature] = String(token || '').split('.');
+    if (!encodedPayload || !signature) {
+        return null;
+    }
+
+    const expectedSignature = firmarToken(encodedPayload);
+    if (signature !== expectedSignature) {
+        return null;
+    }
+
+    try {
+        const payload = JSON.parse(fromBase64Url(encodedPayload));
+        if (!payload?.email || !payload?.exp || payload.exp < Date.now()) {
+            return null;
+        }
+
+        return {
+            id: payload.id,
+            email: String(payload.email).trim().toLowerCase(),
+            role: normalizarRol(payload.role, 'cliente')
+        };
+    } catch (error) {
+        return null;
+    }
+}
+
+function obtenerTokenRequest(req) {
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
+        return authHeader.slice(7).trim();
+    }
+
+    return req.headers['x-session-token'] || req.body?.sessionToken || req.query?.sessionToken || '';
 }
 
 function esEmailValido(correo) {
@@ -354,6 +422,35 @@ async function validarUsuarioPorCorreo(correo, roles = []) {
 
 async function validarAdminPorCorreo(correo) {
     return validarUsuarioPorCorreo(correo, ['admin']);
+}
+
+async function autenticarRequest(req, roles = [], fallbackEmail = '') {
+    const token = obtenerTokenRequest(req);
+
+    if (token) {
+        const payload = verificarTokenSesion(token);
+        if (!payload?.email) {
+            throw crearErrorHttp(401, 'La sesión no es válida o expiró.');
+        }
+
+        const usuario = await obtenerUsuarioActivo(payload.email);
+        if (!usuario) {
+            throw crearErrorHttp(403, 'Ese usuario no está autorizado.');
+        }
+
+        usuario.role = normalizarRol(usuario.role, 'cliente');
+        if (roles.length > 0 && !roles.includes(usuario.role)) {
+            throw crearErrorHttp(403, 'Tu usuario no tiene permisos para esta acción.');
+        }
+
+        return usuario;
+    }
+
+    return validarUsuarioPorCorreo(fallbackEmail, roles);
+}
+
+async function autenticarAdminRequest(req, fallbackEmail = '') {
+    return autenticarRequest(req, ['admin'], fallbackEmail);
 }
 
 async function obtenerProductoPorId(productoId, runner = null) {
@@ -770,7 +867,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/usuarios', async (req, res) => {
     try {
-        await validarAdminPorCorreo(req.query.adminEmail || req.headers['x-admin-email']);
+        await autenticarAdminRequest(req, req.query.adminEmail || req.headers['x-admin-email']);
 
         const usuarios = await dbAll(sql(
             'SELECT id, nombre, email, role, activo, creado_en FROM usuarios ORDER BY creado_en DESC, email ASC',
@@ -789,6 +886,27 @@ app.get('/api/usuarios', async (req, res) => {
     }
 });
 
+app.get('/api/historial/usuarios', async (req, res) => {
+    try {
+        await autenticarAdminRequest(req, req.query.adminEmail || req.headers['x-admin-email']);
+
+        const historial = await dbAll(sql(
+            `SELECT id, usuario_id, nombre, email, role, accion, actor_email, fecha
+             FROM registro_usuarios
+             ORDER BY fecha DESC, id DESC
+             LIMIT 100`,
+            `SELECT id, usuario_id, nombre, email, role, accion, actor_email, fecha
+             FROM registro_usuarios
+             ORDER BY fecha DESC, id DESC
+             LIMIT 100`
+        ));
+
+        res.json({ ok: true, historial });
+    } catch (error) {
+        manejarErrorRuta(res, error, 'No se pudo cargar el historial de usuarios.');
+    }
+});
+
 app.post('/api/usuarios', async (req, res) => {
     const { email, nombre, password, role, adminEmail } = req.body || {};
     const correo = String(email || '').trim().toLowerCase();
@@ -802,7 +920,7 @@ app.post('/api/usuarios', async (req, res) => {
     }
 
     try {
-        await validarAdminPorCorreo(adminEmail);
+        await autenticarAdminRequest(req, adminEmail);
 
         const resultadoOperacion = await conTransaccion(async (query) => {
             const existente = await query.get(sql(
@@ -896,7 +1014,7 @@ app.get('/api/productos', async (req, res) => {
 
 app.get('/api/productos/gestion', async (req, res) => {
     try {
-        const usuario = await validarUsuarioPorCorreo(req.query.email || req.headers['x-user-email'], ['admin', 'vendedor']);
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor'], req.query.email || req.headers['x-user-email']);
         const params = [];
         let whereSqlite = 'WHERE p.activo = 1';
         let wherePg = 'WHERE p.activo = 1';
@@ -955,7 +1073,7 @@ app.post('/api/productos', async (req, res) => {
     }
 
     try {
-        const usuario = await validarUsuarioPorCorreo(actorEmail, ['admin', 'vendedor']);
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor'], actorEmail);
         const origenProducto = usuario.role === 'admin' ? 'tienda' : 'vendedor';
         const vendedorId = usuario.role === 'vendedor' ? usuario.id : null;
         const vendedorEmail = usuario.role === 'vendedor' ? usuario.email : '';
@@ -1009,7 +1127,7 @@ app.put('/api/productos/:id', async (req, res) => {
     }
 
     try {
-        const usuario = await validarUsuarioPorCorreo(actorEmail, ['admin', 'vendedor']);
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor'], actorEmail);
         const producto = await obtenerProductoPorId(productoId);
 
         if (!producto) {
@@ -1064,7 +1182,7 @@ app.delete('/api/productos/:id', async (req, res) => {
     }
 
     try {
-        const usuario = await validarUsuarioPorCorreo(actorEmail, ['admin', 'vendedor']);
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor'], actorEmail);
         const producto = await obtenerProductoPorId(productoId);
 
         if (!producto) {
@@ -1170,13 +1288,51 @@ app.post('/api/compras', async (req, res) => {
     }
 });
 
+app.get('/api/historial/ventas', async (req, res) => {
+    try {
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor'], req.query.email || req.headers['x-user-email']);
+        const params = [];
+        let whereSqlite = 'WHERE p.activo = 1';
+        let wherePg = 'WHERE p.activo = 1';
+
+        if (usuario.role === 'vendedor') {
+            whereSqlite += " AND LOWER(COALESCE(p.vendedor_email, '')) = ?";
+            wherePg += " AND LOWER(COALESCE(p.vendedor_email, '')) = $1";
+            params.push(usuario.email);
+        }
+
+        const ventas = await dbAll(sql(
+            `SELECT v.id, v.producto_id, v.producto_nombre, v.cantidad, v.total, v.comprador_nombre, v.comprador_email,
+                    v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
+             FROM ventas v
+             INNER JOIN productos p ON p.id = v.producto_id
+             ${whereSqlite}
+             ORDER BY v.fecha DESC, v.id DESC
+             LIMIT 100`,
+            `SELECT v.id, v.producto_id, v.producto_nombre, v.cantidad, v.total, v.comprador_nombre, v.comprador_email,
+                    v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
+             FROM ventas v
+             INNER JOIN productos p ON p.id = v.producto_id
+             ${wherePg}
+             ORDER BY v.fecha DESC, v.id DESC
+             LIMIT 100`
+        ), params);
+
+        res.json({ ok: true, ventas });
+    } catch (error) {
+        manejarErrorRuta(res, error, 'No se pudo cargar el historial de ventas.');
+    }
+});
+
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
         const actorEmail = req.query.email || req.headers['x-user-email'];
         let usuario = null;
 
         if (actorEmail) {
-            usuario = await validarUsuarioPorCorreo(actorEmail, ['admin', 'vendedor']);
+            usuario = await autenticarRequest(req, ['admin', 'vendedor'], actorEmail);
+        } else if (obtenerTokenRequest(req)) {
+            usuario = await autenticarRequest(req, ['admin', 'vendedor']);
         }
 
         const params = [];
@@ -1287,7 +1443,6 @@ app.get('/api/kimbin-note', async (req, res) => {
 
 app.post('/api/kimbin-note', async (req, res) => {
     const { mensaje, email } = req.body || {};
-    const correo = String(email || '').trim().toLowerCase();
     const texto = String(mensaje || '').trim();
 
     if (!texto) {
@@ -1296,7 +1451,7 @@ app.post('/api/kimbin-note', async (req, res) => {
     }
 
     try {
-        const usuario = await obtenerUsuarioActivo(correo);
+        const usuario = await autenticarRequest(req, ['admin', 'vendedor', 'cliente'], email);
 
         if (!usuario) {
             res.status(403).json({ ok: false, mensaje: 'Solo usuarios autorizados pueden guardar notas.' });
@@ -1306,7 +1461,7 @@ app.post('/api/kimbin-note', async (req, res) => {
         await dbExecute(sql(
             'UPDATE notas_kimbin SET mensaje = ?, autor_email = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = 1',
             'UPDATE notas_kimbin SET mensaje = $1, autor_email = $2, actualizado_en = CURRENT_TIMESTAMP WHERE id = 1'
-        ), [texto, correo]);
+        ), [texto, usuario.email]);
 
         res.json({ ok: true, mensaje: 'Nota guardada correctamente.' });
     } catch (error) {
@@ -1351,6 +1506,7 @@ app.post('/api/login', async (req, res) => {
         res.json({
             ok: true,
             mensaje: 'Acceso correcto',
+            sessionToken: crearTokenSesion(usuario),
             usuario: {
                 id: usuario.id,
                 nombre: usuario.nombre,

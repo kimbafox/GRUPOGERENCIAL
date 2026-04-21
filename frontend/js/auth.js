@@ -16,6 +16,7 @@ async function login() {
         }
 
         sessionStorage.setItem('auth', 'ok');
+        sessionStorage.setItem('sessionToken', resultado.sessionToken || '');
         sessionStorage.setItem('usuarioId', resultado.usuario.id);
         sessionStorage.setItem('usuarioNombre', resultado.usuario.nombre);
         sessionStorage.setItem('usuarioEmail', resultado.usuario.email);
@@ -31,12 +32,56 @@ function obtenerUsuarioSesion() {
         id: sessionStorage.getItem('usuarioId'),
         nombre: sessionStorage.getItem('usuarioNombre'),
         email: sessionStorage.getItem('usuarioEmail'),
-        role: sessionStorage.getItem('usuarioRole') || 'cliente'
+        role: sessionStorage.getItem('usuarioRole') || 'cliente',
+        sessionToken: sessionStorage.getItem('sessionToken') || ''
     };
 }
 
 function usuarioEsAdmin() {
     return obtenerUsuarioSesion().role === 'admin';
+}
+
+function formatearFecha(fecha) {
+    if (!fecha) {
+        return 'Sin fecha';
+    }
+
+    const value = new Date(fecha);
+    if (Number.isNaN(value.getTime())) {
+        return String(fecha);
+    }
+
+    return new Intl.DateTimeFormat('es-BO', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+    }).format(value);
+}
+
+function normalizarFechaISO(fecha) {
+    if (!fecha) {
+        return '';
+    }
+
+    const value = new Date(fecha);
+    if (Number.isNaN(value.getTime())) {
+        return '';
+    }
+
+    return value.toISOString().slice(0, 10);
+}
+
+function activarPanelTab(tabId) {
+    const secciones = document.querySelectorAll('.panel-section');
+    const tabs = document.querySelectorAll('.panel-tab');
+
+    secciones.forEach((seccion) => {
+        seccion.classList.toggle('oculto', seccion.id !== tabId);
+        seccion.classList.toggle('active', seccion.id === tabId);
+    });
+
+    tabs.forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.panelTab === tabId);
+    });
 }
 
 function aplicarVistaPorRol() {
@@ -63,6 +108,10 @@ function aplicarVistaPorRol() {
     adminOnly.forEach((elemento) => {
         elemento.classList.toggle('oculto', !usuarioEsAdmin());
     });
+
+    if (!usuarioEsAdmin()) {
+        activarPanelTab('resumen');
+    }
 }
 
 function verificarAuth() {
@@ -207,6 +256,147 @@ async function cargarProductosAdmin() {
         `).join('');
     } catch (error) {
         tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar el catálogo de gestión.</td></tr>';
+    }
+}
+
+async function cargarHistorialVentas() {
+    const tbody = document.getElementById('ventas-body');
+    if (!tbody) {
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="6">Cargando ventas...</td></tr>';
+
+    try {
+        const resultado = await API.obtenerHistorialVentas(obtenerUsuarioSesion().email);
+        const ventas = Array.isArray(resultado.ventas) ? resultado.ventas : [];
+        window.historialVentas = ventas;
+
+        if (!resultado.ok || ventas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">No hay ventas registradas todavía.</td></tr>';
+            return;
+        }
+
+        renderHistorialVentas();
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar el historial de ventas.</td></tr>';
+    }
+}
+
+function obtenerVentasFiltradas() {
+    const ventas = Array.isArray(window.historialVentas) ? window.historialVentas : [];
+    const desde = document.getElementById('ventas-filtro-desde')?.value || '';
+    const hasta = document.getElementById('ventas-filtro-hasta')?.value || '';
+    const producto = document.getElementById('ventas-filtro-producto')?.value?.trim().toLowerCase() || '';
+    const origen = document.getElementById('ventas-filtro-origen')?.value || 'todos';
+
+    return ventas.filter((venta) => {
+        const fechaIso = normalizarFechaISO(venta.fecha);
+        const texto = `${venta.producto_nombre || ''} ${venta.comprador_nombre || ''} ${venta.comprador_email || ''}`.toLowerCase();
+        const cumpleDesde = !desde || (fechaIso && fechaIso >= desde);
+        const cumpleHasta = !hasta || (fechaIso && fechaIso <= hasta);
+        const cumpleTexto = !producto || texto.includes(producto);
+        const cumpleOrigen = origen === 'todos' || venta.origen_producto === origen;
+
+        return cumpleDesde && cumpleHasta && cumpleTexto && cumpleOrigen;
+    });
+}
+
+function renderHistorialVentas() {
+    const tbody = document.getElementById('ventas-body');
+    if (!tbody) {
+        return;
+    }
+
+    const ventas = obtenerVentasFiltradas();
+
+    if (!ventas.length) {
+        tbody.innerHTML = '<tr><td colspan="6">No hay ventas para esos filtros.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = ventas.map((venta) => `
+            <tr>
+                <td>${escapeHtml(formatearFecha(venta.fecha))}</td>
+                <td>${escapeHtml(venta.producto_nombre)}</td>
+                <td>${venta.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}</td>
+                <td>${escapeHtml(venta.comprador_nombre || venta.comprador_email || 'Cliente web')}</td>
+                <td>${Number(venta.cantidad || 0)}</td>
+                <td>${formatoMoneda(venta.total || 0)}</td>
+            </tr>
+        `).join('');
+}
+
+function activarFiltrosVentas() {
+    ['ventas-filtro-desde', 'ventas-filtro-hasta', 'ventas-filtro-producto', 'ventas-filtro-origen'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', renderHistorialVentas);
+            element.addEventListener('change', renderHistorialVentas);
+        }
+    });
+}
+
+function exportarVentasCsv() {
+    const ventas = obtenerVentasFiltradas();
+
+    if (!ventas.length) {
+        alert('No hay ventas para exportar con esos filtros.');
+        return;
+    }
+
+    const rows = [
+        ['fecha', 'producto', 'origen', 'comprador', 'email_comprador', 'cantidad', 'total']
+    ].concat(ventas.map((venta) => ([
+        formatearFecha(venta.fecha),
+        venta.producto_nombre || '',
+        venta.origen_producto || '',
+        venta.comprador_nombre || '',
+        venta.comprador_email || '',
+        Number(venta.cantidad || 0),
+        Number(venta.total || 0)
+    ])));
+
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ventas-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+async function cargarHistorialUsuarios() {
+    const tbody = document.getElementById('historial-usuarios-body');
+    if (!tbody || !usuarioEsAdmin()) {
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="5">Cargando historial...</td></tr>';
+
+    try {
+        const resultado = await API.obtenerHistorialUsuarios(obtenerUsuarioSesion().email);
+        const historial = Array.isArray(resultado.historial) ? resultado.historial : [];
+
+        if (!resultado.ok || historial.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">No hay eventos de usuarios registrados.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = historial.map((evento) => `
+            <tr>
+                <td>${escapeHtml(formatearFecha(evento.fecha))}</td>
+                <td>${escapeHtml(String(evento.accion || '').replace(/_/g, ' '))}</td>
+                <td>${escapeHtml(evento.nombre)}<br><small>${escapeHtml(evento.email)}</small></td>
+                <td>${escapeHtml(evento.role || 'cliente')}</td>
+                <td>${escapeHtml(evento.actor_email || 'sistema')}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar el historial de usuarios.</td></tr>';
     }
 }
 
@@ -431,9 +621,11 @@ async function cargarDashboardAdmin() {
 }
 
 document.addEventListener('DOMContentLoaded', iniciarPreviewProducto);
+document.addEventListener('DOMContentLoaded', activarFiltrosVentas);
 
 function logout() {
     sessionStorage.removeItem('auth');
+    sessionStorage.removeItem('sessionToken');
     sessionStorage.removeItem('usuarioId');
     sessionStorage.removeItem('usuarioNombre');
     sessionStorage.removeItem('usuarioEmail');
