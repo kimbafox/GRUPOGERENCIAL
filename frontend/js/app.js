@@ -105,6 +105,26 @@ function filtrarProductos(productos) {
     });
 }
 
+function obtenerEstadoGrupoCatalogo(clave) {
+    if (!window.catalogGroupsState) {
+        window.catalogGroupsState = {
+            tienda: true,
+            vendedores: true
+        };
+    }
+
+    return Boolean(window.catalogGroupsState[clave]);
+}
+
+function toggleCatalogGroup(clave) {
+    if (!window.catalogGroupsState) {
+        window.catalogGroupsState = {};
+    }
+
+    window.catalogGroupsState[clave] = !obtenerEstadoGrupoCatalogo(clave);
+    renderCatalogo(filtrarProductos(window.catalogoProductosOriginal || []));
+}
+
 function renderCatalogo(productos) {
     const contenedor = document.getElementById('catalogo-grid');
     if (!contenedor) {
@@ -114,38 +134,45 @@ function renderCatalogo(productos) {
     const productosTienda = productos.filter((producto) => producto.origen_producto === 'tienda');
     const productosVendedores = productos.filter((producto) => producto.origen_producto === 'vendedor');
 
-    const renderGrupo = (titulo, descripcion, items, mostrarVendedor) => `
-        <section class="catalog-group">
-            <div class="section-heading">
-                <h3>${escaparHtml(titulo)}</h3>
-                <p>${escaparHtml(descripcion)}</p>
-            </div>
-            <div class="catalog-grid catalog-grid-inner">
-                ${items.length ? items.map((producto) => `
-                    <article class="catalog-card">
-                        <div class="catalog-image-wrap">
-                            <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
-                        </div>
-                        <div class="catalog-content">
-                            <div>
-                                <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
-                                <h3>${escaparHtml(producto.nombre)}</h3>
-                                <p>${escaparHtml(producto.descripcion || 'Producto disponible para compra inmediata.')}</p>
-                                ${mostrarVendedor ? `<small class="catalog-owner">Vendedor: ${escaparHtml(producto.vendedor_nombre || 'Vendedor registrado')}</small>` : ''}
-                            </div>
-                            <div class="catalog-footer">
-                                <div>
-                                    <strong>${formatoMoneda(producto.precio)}</strong>
-                                    <small>Stock disponible: ${Number(producto.stock || 0)}</small>
+    const renderGrupo = (clave, titulo, descripcion, items, mostrarVendedor) => `
+        <section class="catalog-group ${obtenerEstadoGrupoCatalogo(clave) ? 'expanded' : 'collapsed'}">
+            <button type="button" class="catalog-group-toggle" onclick="toggleCatalogGroup('${clave}')">
+                <div class="catalog-group-heading">
+                    <h3>${escaparHtml(titulo)}</h3>
+                    <p>${escaparHtml(descripcion)}</p>
+                </div>
+                <span class="catalog-group-indicator">${obtenerEstadoGrupoCatalogo(clave) ? 'Ocultar' : 'Mostrar'} (${items.length})</span>
+            </button>
+            <div class="catalog-group-body ${obtenerEstadoGrupoCatalogo(clave) ? '' : 'oculto'}">
+                <div class="catalog-group-scroll">
+                    <div class="catalog-grid catalog-grid-inner">
+                        ${items.length ? items.map((producto) => `
+                            <article class="catalog-card compact-catalog-card">
+                                <div class="catalog-image-wrap">
+                                    <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
                                 </div>
-                                <div class="catalog-actions">
-                                    <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
-                                    <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
+                                <div class="catalog-content">
+                                    <div>
+                                        <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
+                                        <h3>${escaparHtml(producto.nombre)}</h3>
+                                        <p>${escaparHtml(producto.descripcion || 'Producto disponible.')}</p>
+                                        ${mostrarVendedor ? `<small class="catalog-owner">Vendedor: ${escaparHtml(producto.vendedor_nombre || 'Vendedor registrado')}</small>` : ''}
+                                    </div>
+                                    <div class="catalog-footer">
+                                        <div>
+                                            <strong>${formatoMoneda(producto.precio)}</strong>
+                                            <small>Stock: ${Number(producto.stock || 0)}</small>
+                                        </div>
+                                        <div class="catalog-actions">
+                                            <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
+                                            <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </article>
-                `).join('') : '<p class="catalog-loading">No hay productos en esta sección por ahora.</p>'}
+                            </article>
+                        `).join('') : '<p class="catalog-loading">No hay productos en esta sección.</p>'}
+                    </div>
+                </div>
             </div>
         </section>
     `;
@@ -156,8 +183,8 @@ function renderCatalogo(productos) {
     }
 
     contenedor.innerHTML = [
-        renderGrupo('Productos de la tienda', 'Catálogo principal publicado directamente por la página.', productosTienda, false),
-        renderGrupo('Productos de vendedores', 'Publicaciones cargadas por vendedores autorizados dentro de la plataforma.', productosVendedores, true)
+        renderGrupo('tienda', 'Productos de la tienda', 'Catálogo principal publicado directamente por la página.', productosTienda, false),
+        renderGrupo('vendedores', 'Productos de vendedores', 'Publicaciones cargadas por vendedores autorizados dentro de la plataforma.', productosVendedores, true)
     ].join('');
 }
 
@@ -204,9 +231,47 @@ function verDetalleProducto(id) {
         return;
     }
 
-    alert(
-        `${producto.nombre}\n\nCategoría: ${producto.categoria}\nPrecio: ${formatoMoneda(producto.precio)}\nStock: ${producto.stock}\nOrigen: ${producto.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}${producto.vendedor_nombre ? `\nVendedor: ${producto.vendedor_nombre}` : ''}\n\n${producto.descripcion || 'Sin descripción detallada.'}`
-    );
+    const modal = document.getElementById('detalle-producto-modal');
+    const imagen = document.getElementById('detalle-producto-imagen');
+    const categoria = document.getElementById('detalle-producto-categoria');
+    const nombre = document.getElementById('detalle-producto-nombre');
+    const descripcion = document.getElementById('detalle-producto-descripcion');
+    const precio = document.getElementById('detalle-producto-precio');
+    const stock = document.getElementById('detalle-producto-stock');
+    const origen = document.getElementById('detalle-producto-origen');
+    const vendedor = document.getElementById('detalle-producto-vendedor');
+    const comprar = document.getElementById('detalle-producto-comprar');
+
+    if (!modal || !imagen || !categoria || !nombre || !descripcion || !precio || !stock || !origen || !vendedor || !comprar) {
+        return;
+    }
+
+    imagen.src = producto.imagen_url || 'assets/M.png';
+    imagen.alt = producto.nombre || 'Detalle del producto';
+    categoria.textContent = producto.categoria || 'Sin categoría';
+    nombre.textContent = producto.nombre || 'Producto';
+    descripcion.textContent = producto.descripcion || 'Sin descripción detallada.';
+    precio.textContent = formatoMoneda(producto.precio);
+    stock.textContent = `Stock: ${Number(producto.stock || 0)}`;
+    origen.textContent = `Origen: ${producto.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}`;
+
+    if (producto.origen_producto === 'vendedor' && producto.vendedor_nombre) {
+        vendedor.textContent = `Vendedor: ${producto.vendedor_nombre}`;
+        vendedor.classList.remove('oculto');
+    } else {
+        vendedor.textContent = '';
+        vendedor.classList.add('oculto');
+    }
+
+    comprar.onclick = () => comprarProducto(producto.id);
+    modal.classList.remove('oculto');
+}
+
+function cerrarDetalleProducto() {
+    const modal = document.getElementById('detalle-producto-modal');
+    if (modal) {
+        modal.classList.add('oculto');
+    }
 }
 
 async function comprarProducto(id) {

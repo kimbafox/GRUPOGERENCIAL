@@ -23,7 +23,9 @@
 </header>
 
 <main>
-
+    <section id="inicio" class="hero-panel storefront-hero">
+        
+    </section>
 
     <section class="promo-carousel">
         <div class="carousel-header">
@@ -92,6 +94,32 @@
 
             <button onclick="login()">Ingresar</button>
             <button onclick="cerrarLogin()">Cancelar</button>
+        </div>
+    </section>
+
+    <section id="detalle-producto-modal" class="modal oculto">
+        <div class="modal-content product-detail-modal">
+            <button type="button" class="modal-close-button" onclick="cerrarDetalleProducto()">Cerrar</button>
+            <div class="product-detail-layout">
+                <div class="product-detail-media">
+                    <img id="detalle-producto-imagen" src="assets/M.png" alt="Detalle del producto" class="product-detail-image">
+                </div>
+                <div class="product-detail-info">
+                    <span id="detalle-producto-categoria" class="catalog-category">Categoría</span>
+                    <h2 id="detalle-producto-nombre">Producto</h2>
+                    <p id="detalle-producto-descripcion">Descripción del producto.</p>
+                    <div class="product-detail-meta">
+                        <strong id="detalle-producto-precio">Bs 0</strong>
+                        <span id="detalle-producto-stock">Stock: 0</span>
+                        <span id="detalle-producto-origen">Origen: Tienda</span>
+                        <span id="detalle-producto-vendedor" class="oculto">Vendedor</span>
+                    </div>
+                    <div class="catalog-actions product-detail-actions">
+                        <button type="button" id="detalle-producto-comprar">Comprar</button>
+                        <button type="button" class="secondary-button" onclick="cerrarDetalleProducto()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 </main>
