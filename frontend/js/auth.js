@@ -16,12 +16,53 @@ async function login() {
         }
 
         sessionStorage.setItem('auth', 'ok');
+        sessionStorage.setItem('usuarioId', resultado.usuario.id);
         sessionStorage.setItem('usuarioNombre', resultado.usuario.nombre);
         sessionStorage.setItem('usuarioEmail', resultado.usuario.email);
+        sessionStorage.setItem('usuarioRole', resultado.usuario.role || 'cliente');
         window.location.href = 'admin.html';
     } catch (error) {
         alert('Error de conexión con el servidor.');
     }
+}
+
+function obtenerUsuarioSesion() {
+    return {
+        id: sessionStorage.getItem('usuarioId'),
+        nombre: sessionStorage.getItem('usuarioNombre'),
+        email: sessionStorage.getItem('usuarioEmail'),
+        role: sessionStorage.getItem('usuarioRole') || 'cliente'
+    };
+}
+
+function usuarioEsAdmin() {
+    return obtenerUsuarioSesion().role === 'admin';
+}
+
+function aplicarVistaPorRol() {
+    const usuario = obtenerUsuarioSesion();
+    const titulo = document.getElementById('panel-title');
+    const subtitulo = document.getElementById('panel-subtitle');
+    const badge = document.getElementById('usuario-role-badge');
+    const adminOnly = document.querySelectorAll('[data-admin-only="true"]');
+
+    if (titulo) {
+        titulo.textContent = usuario.role === 'admin' ? 'Panel de administración' : 'Panel de vendedor';
+    }
+
+    if (subtitulo) {
+        subtitulo.textContent = usuario.role === 'admin'
+            ? 'Gestiona productos propios, vendedores y accesos del sistema.'
+            : 'Gestiona tus productos publicados dentro de la plataforma.';
+    }
+
+    if (badge) {
+        badge.textContent = usuario.role === 'admin' ? 'Administrador' : 'Vendedor';
+    }
+
+    adminOnly.forEach((elemento) => {
+        elemento.classList.toggle('oculto', !usuarioEsAdmin());
+    });
 }
 
 function verificarAuth() {
@@ -31,13 +72,14 @@ function verificarAuth() {
         return;
     }
 
-    const nombre = sessionStorage.getItem('usuarioNombre');
-    const email = sessionStorage.getItem('usuarioEmail');
+    const { nombre, email, role } = obtenerUsuarioSesion();
     const info = document.getElementById('usuario-info');
 
     if (info && nombre && email) {
-        info.textContent = `Usuario activo: ${nombre} (${email})`;
+        info.textContent = `Usuario activo: ${nombre} (${email}) - Rol: ${role}`;
     }
+
+    aplicarVistaPorRol();
 }
 
 function escapeHtml(value) {
@@ -59,19 +101,20 @@ function formatoMoneda(valor) {
 
 async function cargarUsuariosAutorizados() {
     const tbody = document.getElementById('usuarios-body');
+    const usuario = obtenerUsuarioSesion();
 
-    if (!tbody) {
+    if (!tbody || !usuarioEsAdmin()) {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="3">Cargando correos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">Cargando usuarios...</td></tr>';
 
     try {
-        const resultado = await API.obtenerUsuarios();
+        const resultado = await API.obtenerUsuarios(usuario.email);
         const usuarios = Array.isArray(resultado.usuarios) ? resultado.usuarios : [];
 
         if (!resultado.ok || usuarios.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3">No hay correos autorizados todavía.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4">No hay usuarios registrados todavía.</td></tr>';
             return;
         }
 
@@ -79,11 +122,12 @@ async function cargarUsuariosAutorizados() {
             <tr>
                 <td>${escapeHtml(usuario.nombre)}</td>
                 <td>${escapeHtml(usuario.email)}</td>
+                <td>${escapeHtml(usuario.role || 'cliente')}</td>
                 <td>${usuario.activo === 1 ? 'Activo' : 'Inactivo'}</td>
             </tr>
         `).join('');
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="3">No se pudo cargar la lista.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4">No se pudo cargar la lista.</td></tr>';
     }
 }
 
@@ -91,16 +135,20 @@ async function guardarUsuarioAutorizado() {
     const nombreInput = document.getElementById('nuevo-nombre');
     const emailInput = document.getElementById('nuevo-email');
     const passwordInput = document.getElementById('nuevo-password');
+    const roleInput = document.getElementById('nuevo-role');
     const estado = document.getElementById('usuarios-estado');
+    const usuario = obtenerUsuarioSesion();
 
-    if (!emailInput || !estado) {
+    if (!emailInput || !estado || !usuarioEsAdmin()) {
         return;
     }
 
     const payload = {
         nombre: nombreInput?.value?.trim(),
         email: emailInput.value.trim().toLowerCase(),
-        password: passwordInput?.value?.trim()
+        password: passwordInput?.value?.trim(),
+        role: roleInput?.value || 'vendedor',
+        adminEmail: usuario.email
     };
 
     if (!payload.email) {
@@ -116,28 +164,30 @@ async function guardarUsuarioAutorizado() {
             if (nombreInput) nombreInput.value = '';
             emailInput.value = '';
             if (passwordInput) passwordInput.value = '';
+            if (roleInput) roleInput.value = 'vendedor';
             cargarUsuariosAutorizados();
         }
     } catch (error) {
-        estado.textContent = 'No se pudo guardar el correo.';
+        estado.textContent = 'No se pudo guardar el usuario.';
     }
 }
 
 async function cargarProductosAdmin() {
     const tbody = document.getElementById('productos-body');
+    const usuario = obtenerUsuarioSesion();
     if (!tbody) {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="5">Cargando productos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Cargando productos...</td></tr>';
 
     try {
-        const resultado = await API.obtenerProductos();
+        const resultado = await API.obtenerProductosGestion(usuario.email);
         const productos = Array.isArray(resultado.productos) ? resultado.productos : [];
         window.adminProductos = productos;
 
         if (!resultado.ok || productos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No hay productos creados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7">No hay productos creados.</td></tr>';
             return;
         }
 
@@ -145,6 +195,8 @@ async function cargarProductosAdmin() {
             <tr>
                 <td>${escapeHtml(producto.nombre)}</td>
                 <td>${escapeHtml(producto.categoria)}</td>
+                <td>${producto.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}</td>
+                <td>${escapeHtml(producto.vendedor_nombre || (producto.origen_producto === 'tienda' ? 'Merkateck' : 'Sin asignar'))}</td>
                 <td>${Number(producto.stock || 0)}</td>
                 <td>${Number(producto.vendidos || 0)}</td>
                 <td>
@@ -154,7 +206,7 @@ async function cargarProductosAdmin() {
             </tr>
         `).join('');
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar el catálogo admin.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar el catálogo de gestión.</td></tr>';
     }
 }
 
@@ -164,7 +216,7 @@ function actualizarPreviewProducto() {
     const precio = document.getElementById('producto-precio')?.value?.trim() || '0';
     const imagen = document.getElementById('producto-imagen')?.value?.trim() || 'assets/M.png';
     const stock = document.getElementById('producto-stock')?.value?.trim() || '0';
-    const descripcion = document.getElementById('producto-descripcion')?.value?.trim() || 'Aquí verás el resumen del producto antes de publicarlo.';
+    const descripcion = document.getElementById('producto-descripcion')?.value?.trim() || 'Descripción opcional para ampliar la información del producto.';
 
     const nombrePreview = document.getElementById('preview-nombre');
     const categoriaPreview = document.getElementById('preview-categoria');
@@ -259,7 +311,7 @@ function editarProducto(id) {
 
 async function guardarProductoAdmin() {
     const estado = document.getElementById('productos-estado');
-    const adminEmail = sessionStorage.getItem('usuarioEmail');
+    const usuario = obtenerUsuarioSesion();
 
     const payload = {
         id: document.getElementById('producto-id')?.value?.trim(),
@@ -269,11 +321,11 @@ async function guardarProductoAdmin() {
         imagen_url: document.getElementById('producto-imagen')?.value?.trim(),
         stock: document.getElementById('producto-stock')?.value?.trim(),
         descripcion: document.getElementById('producto-descripcion')?.value?.trim(),
-        adminEmail
+        actorEmail: usuario.email
     };
 
-    if (!payload.nombre || !payload.descripcion || !payload.precio) {
-        estado.textContent = 'Completa nombre, descripción y precio.';
+    if (!payload.nombre || !payload.precio) {
+        estado.textContent = 'Completa al menos nombre y precio.';
         return;
     }
 
@@ -292,7 +344,7 @@ async function guardarProductoAdmin() {
 }
 
 async function eliminarProductoAdmin(id) {
-    const adminEmail = sessionStorage.getItem('usuarioEmail');
+    const usuario = obtenerUsuarioSesion();
     const estado = document.getElementById('productos-estado');
 
     if (!window.confirm('¿Seguro que deseas eliminar este producto?')) {
@@ -300,7 +352,7 @@ async function eliminarProductoAdmin(id) {
     }
 
     try {
-        const resultado = await API.eliminarProducto(id, adminEmail);
+        const resultado = await API.eliminarProducto(id, usuario.email);
         estado.textContent = resultado.mensaje || 'Producto eliminado.';
 
         if (resultado.ok) {
@@ -350,7 +402,7 @@ function renderGraficaVentas(ventasPorDia) {
 
 async function cargarDashboardAdmin() {
     try {
-        const resultado = await API.obtenerDashboard();
+        const resultado = await API.obtenerDashboard(obtenerUsuarioSesion().email);
         if (!resultado.ok) {
             return;
         }
@@ -358,9 +410,13 @@ async function cargarDashboardAdmin() {
         const totalProductos = document.getElementById('metric-total-productos');
         const comprasTotales = document.getElementById('metric-compras-totales');
         const productoTop = document.getElementById('metric-producto-top');
+        const productosTienda = document.getElementById('metric-productos-tienda');
+        const productosVendedores = document.getElementById('metric-productos-vendedores');
 
         if (totalProductos) totalProductos.textContent = Number(resultado.totalProductos || 0);
         if (comprasTotales) comprasTotales.textContent = Number(resultado.comprasTotales || 0);
+        if (productosTienda) productosTienda.textContent = Number(resultado.totalProductosTienda || 0);
+        if (productosVendedores) productosVendedores.textContent = Number(resultado.totalProductosVendedores || 0);
 
         if (productoTop) {
             productoTop.textContent = resultado.productoMasComprado
@@ -378,7 +434,9 @@ document.addEventListener('DOMContentLoaded', iniciarPreviewProducto);
 
 function logout() {
     sessionStorage.removeItem('auth');
+    sessionStorage.removeItem('usuarioId');
     sessionStorage.removeItem('usuarioNombre');
     sessionStorage.removeItem('usuarioEmail');
+    sessionStorage.removeItem('usuarioRole');
     window.location.href = 'index.html';
 }

@@ -247,6 +247,32 @@ section {
     gap: 16px;
 }
 
+.catalog-group {
+    display: grid;
+    gap: 14px;
+}
+
+.catalog-grid-inner {
+    display: grid;
+    gap: 16px;
+}
+
+.section-heading {
+    display: grid;
+    gap: 6px;
+}
+
+.section-heading h3,
+.section-heading p {
+    margin: 0;
+}
+
+.catalog-owner {
+    display: inline-block;
+    margin-top: 8px;
+    color: #fecaca;
+}
+
 .catalog-card {
     display: grid;
     grid-template-columns: 240px 1fr;
@@ -496,7 +522,8 @@ section {
 }
 
 textarea,
-input {
+input,
+select {
     display: block;
     margin: 10px 0;
     padding: 11px 12px;
@@ -636,6 +663,11 @@ button:hover {
 
 .tabla-usuarios th {
     color: #fca5a5;
+}
+
+#usuario-role-badge {
+    align-self: center;
+    margin-bottom: 0;
 }
 
 #usuarios-estado,

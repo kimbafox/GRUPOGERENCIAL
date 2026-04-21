@@ -10,7 +10,8 @@
 
 <header>
     <div class="brand-copy">
-        <h1>Panel Administrador</h1>
+        <h1 id="panel-title">Panel de administración</h1>
+        <p id="panel-subtitle">Gestiona productos propios, vendedores y accesos del sistema.</p>
       
     </div>
     <div class="admin-inline-actions">
@@ -21,17 +22,28 @@
 
 <main>
     <section class="info-panel">
-        <h2>Bienvenido admin</h2>
+        <div class="admin-inline-actions">
+            <h2>Bienvenido</h2>
+            <span id="usuario-role-badge" class="catalog-category">Administrador</span>
+        </div>
         <p id="usuario-info">Zona protegida.</p>
         
     </section>
 
     <section class="metrics-panel">
-        <h2>Resumen simple</h2>
+        <h2>Resumen operativo</h2>
         <div class="metric-cards">
             <article class="metric-card">
-                <span>Productos activos</span>
+                <span>Productos gestionados</span>
                 <strong id="metric-total-productos">0</strong>
+            </article>
+            <article class="metric-card" data-admin-only="true">
+                <span>Productos de la tienda</span>
+                <strong id="metric-productos-tienda">0</strong>
+            </article>
+            <article class="metric-card">
+                <span>Productos de vendedores</span>
+                <strong id="metric-productos-vendedores">0</strong>
             </article>
             <article class="metric-card">
                 <span>Compras registradas</span>
@@ -54,7 +66,7 @@
         <div class="upload-header">
             <div>
                 <h2>Subir producto</h2>
-                <p>Abre la ventana desplegable, completa los datos y revisa la vista previa antes de guardar.</p>
+                <p>Admin publica productos de la tienda. Los vendedores publican sus propios productos desde este mismo panel.</p>
             </div>
             <button id="toggle-producto-btn" type="button" onclick="toggleProductoPanel()">Abrir ventana de carga</button>
         </div>
@@ -93,7 +105,7 @@
 
                     <div class="field-group">
                         <label for="producto-descripcion">Descripción</label>
-                        <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
+                        <textarea id="producto-descripcion" rows="5" placeholder="Descripción opcional o resumen del producto"></textarea>
                     </div>
                 </div>
 
@@ -124,28 +136,35 @@
                         <tr>
                             <th>Producto</th>
                             <th>Categoría</th>
+                            <th>Origen</th>
+                            <th>Propietario</th>
                             <th>Stock</th>
                             <th>Comprado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="productos-body">
-                        <tr><td colspan="5">Cargando productos...</td></tr>
+                        <tr><td colspan="7">Cargando productos...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </section>
 
-    <section>
+    <section data-admin-only="true">
         <h2>Administrar accesos</h2>
-        <p>Solo los correos autorizados pueden entrar al panel y subir información.</p>
+        <p>Crea usuarios administradores, vendedores o clientes autorizados.</p>
         <div class="admin-grid">
             <input type="text" id="nuevo-nombre" placeholder="Nombre del usuario">
             <input type="email" id="nuevo-email" placeholder="Correo autorizado">
             <input type="text" id="nuevo-password" placeholder="Contraseña inicial">
+            <select id="nuevo-role">
+                <option value="vendedor">Vendedor</option>
+                <option value="admin">Administrador</option>
+                <option value="cliente">Cliente</option>
+            </select>
         </div>
-        <button type="button" onclick="guardarUsuarioAutorizado()">Guardar acceso</button>
+        <button type="button" onclick="guardarUsuarioAutorizado()">Guardar usuario</button>
         <p id="usuarios-estado"></p>
 
         <div class="tabla-wrap">
@@ -154,11 +173,12 @@
                     <tr>
                         <th>Nombre</th>
                         <th>Correo</th>
+                        <th>Rol</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
                 <tbody id="usuarios-body">
-                    <tr><td colspan="3">Cargando correos...</td></tr>
+                    <tr><td colspan="4">Cargando usuarios...</td></tr>
                 </tbody>
             </table>
         </div>

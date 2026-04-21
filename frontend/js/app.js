@@ -83,6 +83,8 @@ async function cargarCatalogoVentas() {
     try {
         const resultado = await API.obtenerProductos();
         const productos = Array.isArray(resultado.productos) ? resultado.productos : [];
+        const productosTienda = Array.isArray(resultado.productosTienda) ? resultado.productosTienda : productos.filter((producto) => producto.origen_producto === 'tienda');
+        const productosVendedores = Array.isArray(resultado.productosVendedores) ? resultado.productosVendedores : productos.filter((producto) => producto.origen_producto === 'vendedor');
         window.catalogoProductos = productos;
 
         if (!resultado.ok || productos.length === 0) {
@@ -90,7 +92,14 @@ async function cargarCatalogoVentas() {
             return;
         }
 
-        contenedor.innerHTML = productos.map((producto) => `
+        const renderGrupo = (titulo, descripcion, items, mostrarVendedor) => `
+            <section class="catalog-group">
+                <div class="section-heading">
+                    <h3>${escaparHtml(titulo)}</h3>
+                    <p>${escaparHtml(descripcion)}</p>
+                </div>
+                <div class="catalog-grid catalog-grid-inner">
+                    ${items.length ? items.map((producto) => `
             <article class="catalog-card">
                 <div class="catalog-image-wrap">
                     <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
@@ -99,7 +108,8 @@ async function cargarCatalogoVentas() {
                     <div>
                         <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
                         <h3>${escaparHtml(producto.nombre)}</h3>
-                        <p>${escaparHtml(producto.descripcion)}</p>
+                        <p>${escaparHtml(producto.descripcion || 'Producto disponible para compra inmediata.')}</p>
+                        ${mostrarVendedor ? `<small class="catalog-owner">Vendedor: ${escaparHtml(producto.vendedor_nombre || 'Vendedor registrado')}</small>` : ''}
                     </div>
                     <div class="catalog-footer">
                         <div>
@@ -113,7 +123,15 @@ async function cargarCatalogoVentas() {
                     </div>
                 </div>
             </article>
-        `).join('');
+        `).join('') : '<p class="catalog-loading">No hay productos en esta sección por ahora.</p>'}
+                </div>
+            </section>
+        `;
+
+        contenedor.innerHTML = [
+            renderGrupo('Productos de la tienda', 'Catálogo principal publicado directamente por la página.', productosTienda, false),
+            renderGrupo('Productos de vendedores', 'Publicaciones cargadas por vendedores autorizados dentro de la plataforma.', productosVendedores, true)
+        ].join('');
     } catch (error) {
         contenedor.innerHTML = '<p class="catalog-loading">No se pudo cargar el catálogo.</p>';
     }
@@ -126,7 +144,7 @@ function verDetalleProducto(id) {
     }
 
     alert(
-        `${producto.nombre}\n\nCategoría: ${producto.categoria}\nPrecio: ${formatoMoneda(producto.precio)}\nStock: ${producto.stock}\n\n${producto.descripcion}`
+        `${producto.nombre}\n\nCategoría: ${producto.categoria}\nPrecio: ${formatoMoneda(producto.precio)}\nStock: ${producto.stock}\nOrigen: ${producto.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}${producto.vendedor_nombre ? `\nVendedor: ${producto.vendedor_nombre}` : ''}\n\n${producto.descripcion || 'Sin descripción detallada.'}`
     );
 }
 

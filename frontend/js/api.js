@@ -3,7 +3,20 @@ const API = {
 
     async request(url, options = {}) {
         const response = await fetch(`${this.baseUrl}${url}`, options);
-        return response.json();
+        const contentType = response.headers.get('content-type') || '';
+        const payload = contentType.includes('application/json')
+            ? await response.json()
+            : { ok: response.ok, mensaje: response.statusText };
+
+        if (typeof payload.ok === 'undefined') {
+            payload.ok = response.ok;
+        }
+
+        if (!response.ok && !payload.mensaje) {
+            payload.mensaje = 'La solicitud no pudo completarse.';
+        }
+
+        return payload;
     },
 
     async login(email, password) {
@@ -20,8 +33,8 @@ const API = {
         return this.request('/api/health');
     },
 
-    async obtenerUsuarios() {
-        return this.request('/api/usuarios');
+    async obtenerUsuarios(adminEmail) {
+        return this.request(`/api/usuarios?adminEmail=${encodeURIComponent(adminEmail || '')}`);
     },
 
     async guardarUsuario(usuario) {
@@ -38,6 +51,10 @@ const API = {
         return this.request('/api/productos');
     },
 
+    async obtenerProductosGestion(email) {
+        return this.request(`/api/productos/gestion?email=${encodeURIComponent(email || '')}`);
+    },
+
     async guardarProducto(producto) {
         const method = producto.id ? 'PUT' : 'POST';
         const url = producto.id ? `/api/productos/${producto.id}` : '/api/productos';
@@ -51,8 +68,8 @@ const API = {
         });
     },
 
-    async eliminarProducto(id, adminEmail) {
-        return this.request(`/api/productos/${id}?adminEmail=${encodeURIComponent(adminEmail)}`, {
+    async eliminarProducto(id, actorEmail) {
+        return this.request(`/api/productos/${id}?email=${encodeURIComponent(actorEmail || '')}`, {
             method: 'DELETE'
         });
     },
@@ -67,7 +84,8 @@ const API = {
         });
     },
 
-    async obtenerDashboard() {
-        return this.request('/api/dashboard/stats');
+    async obtenerDashboard(email) {
+        const suffix = email ? `?email=${encodeURIComponent(email)}` : '';
+        return this.request(`/api/dashboard/stats${suffix}`);
     }
 };
