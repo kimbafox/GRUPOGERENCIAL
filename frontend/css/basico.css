@@ -95,6 +95,44 @@ header > div:last-child,
     color: #fecaca;
 }
 
+.cart-entry-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cart-entry-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0 7px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    font-size: 0.85rem;
+}
+
+.active-cart-entry {
+    background: linear-gradient(135deg, #991b1b, #ef4444);
+}
+
+.cart-pop {
+    animation: cartPop 0.42s ease;
+}
+
+@keyframes cartPop {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.06);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
 main {
     max-width: 1180px;
     margin: 0 auto;
@@ -673,6 +711,50 @@ section {
     border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.admin-overview-grid,
+.client-cart-shell {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.admin-shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.admin-recent-panel,
+.admin-shortcuts-panel,
+.client-cart-summary-shell,
+.client-cart-main {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-activity-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-activity-item p,
+.admin-activity-meta span {
+    color: var(--muted);
+    margin: 4px 0 0;
+}
+
+.admin-activity-meta {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+}
+
 .admin-cart-shell {
     display: grid;
     grid-template-columns: 1.15fr 0.85fr;
@@ -1026,6 +1108,102 @@ select {
     margin-top: 4px;
 }
 
+.product-detail-purchase-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.compact-field-group {
+    margin: 0;
+}
+
+.compact-field-group input {
+    margin-bottom: 0;
+}
+
+.cart-inline-link {
+    height: fit-content;
+    white-space: nowrap;
+}
+
+.cart-hero-panel {
+    grid-template-columns: 1.15fr 0.85fr;
+}
+
+.client-cart-items {
+    display: grid;
+    gap: 14px;
+}
+
+.client-cart-item {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(10, 12, 17, 0.84);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.client-cart-item-media {
+    min-height: 180px;
+    background: #0b0f15;
+}
+
+.client-cart-item-media img {
+    width: 100%;
+    height: 100%;
+    min-height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.client-cart-item-content {
+    display: grid;
+    gap: 14px;
+}
+
+.client-cart-item-content h3,
+.client-cart-item-content p,
+.client-cart-item-footer strong {
+    margin: 0;
+}
+
+.client-cart-item-content p,
+.client-cart-item-content small {
+    color: var(--muted);
+}
+
+.client-cart-item-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.client-cart-item-actions {
+    display: grid;
+    justify-items: end;
+    gap: 10px;
+}
+
+.client-cart-summary-shell {
+    position: sticky;
+    top: 18px;
+    padding: 18px;
+    background:
+        linear-gradient(145deg, rgba(127, 29, 29, 0.16), rgba(10, 12, 17, 0.92) 30%),
+        rgba(10, 12, 17, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.client-cart-summary {
+    padding-top: 0;
+    border-top: 0;
+}
+
 .oculto {
     display: none;
 }
@@ -1198,7 +1376,11 @@ button:disabled {
     .form-preview-grid,
     .catalog-filters,
     .product-detail-layout,
-    .admin-cart-shell {
+    .admin-cart-shell,
+    .admin-overview-grid,
+    .client-cart-shell,
+    .cart-hero-panel,
+    .client-cart-item {
         grid-template-columns: 1fr;
     }
 
@@ -1228,6 +1410,11 @@ button:disabled {
         text-align: left;
     }
 
+    .product-detail-purchase-grid {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
     .admin-cart-item {
         grid-template-columns: 1fr;
     }
@@ -1238,6 +1425,15 @@ button:disabled {
 
     .admin-cart-panel {
         position: static;
+    }
+
+    .client-cart-summary-shell {
+        position: static;
+    }
+
+    .client-cart-item-actions,
+    .admin-activity-meta {
+        justify-items: stretch;
     }
 }
 

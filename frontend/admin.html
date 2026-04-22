@@ -31,12 +31,15 @@
         <div class="feature-grid compact-features">
             <article class="feature-card">
                 <h3>Resumen</h3>
+                <p>Controla el movimiento general de productos y ventas desde una sola vista.</p>
             </article>
             <article class="feature-card">
                 <h3>Productos</h3>
+                <p>Edita precios, stock e imagenes sin salir del panel.</p>
             </article>
             <article class="feature-card" data-admin-only="true">
                 <h3>Usuarios</h3>
+                <p>Autoriza accesos y separa el trabajo entre admin y vendedores.</p>
             </article>
         </div>
     </section>
@@ -46,7 +49,6 @@
             <button type="button" class="panel-tab active" data-panel-tab="resumen" onclick="activarPanelTab('resumen')">Resumen</button>
             <button type="button" class="panel-tab" data-panel-tab="productos" onclick="activarPanelTab('productos')">Productos</button>
             <button type="button" class="panel-tab" data-panel-tab="ventas" onclick="activarPanelTab('ventas')">Ventas</button>
-            <button type="button" class="panel-tab" data-admin-only="true" data-panel-tab="carrito-admin" onclick="activarPanelTab('carrito-admin')">Carrito admin</button>
             <button type="button" class="panel-tab" data-panel-tab="usuarios" data-admin-only="true" onclick="activarPanelTab('usuarios')">Usuarios</button>
         </div>
     </section>
@@ -80,6 +82,25 @@
             <h3>Conteo de compras por día</h3>
             <div id="ventasChart" class="chart-bars"></div>
             <p id="ventasResumen" class="chart-summary"></p>
+        </div>
+
+        <div class="admin-overview-grid">
+            <article class="chart-panel admin-shortcuts-panel">
+                <h3>Acciones rápidas</h3>
+                <div class="admin-shortcuts-grid">
+                    <button type="button" onclick="activarPanelTab('productos')">Ir a productos</button>
+                    <button type="button" onclick="activarPanelTab('ventas')">Ver historial</button>
+                    <button type="button" data-admin-only="true" onclick="activarPanelTab('usuarios')">Gestionar usuarios</button>
+                    <button type="button" onclick="window.location.href='index.html'">Abrir tienda</button>
+                </div>
+            </article>
+
+            <article class="chart-panel admin-recent-panel">
+                <h3>Actividad reciente</h3>
+                <div id="admin-actividad-reciente" class="sales-list">
+                    <p class="chart-empty">Aquí verás las ventas más recientes.</p>
+                </div>
+            </article>
         </div>
     </section>
 
@@ -213,96 +234,6 @@
                     <tr><td colspan="10">Cargando ventas...</td></tr>
                 </tbody>
             </table>
-        </div>
-    </section>
-
-    <section id="carrito-admin" class="panel-section oculto" data-admin-only="true">
-        <div class="upload-header">
-            <div>
-                <h2>Carrito de ventas administrado</h2>
-                <p>Acumula productos, aplica descuentos y registra una venta desde el panel.</p>
-            </div>
-            <div class="admin-inline-actions">
-                <button type="button" onclick="vaciarCarritoAdmin()">Vaciar carrito</button>
-                <button type="button" class="secondary-button" onclick="cargarProductosAdmin()">Recargar productos</button>
-            </div>
-        </div>
-
-        <div id="admin-cart-shell" class="admin-cart-shell">
-            <div class="admin-cart-form">
-                <div class="admin-grid">
-                    <div class="field-group">
-                        <label for="admin-cart-producto">Producto</label>
-                        <select id="admin-cart-producto">
-                            <option value="">Selecciona un producto</option>
-                        </select>
-                    </div>
-
-                    <div class="field-group">
-                        <label for="admin-cart-cantidad">Cantidad</label>
-                        <input type="number" id="admin-cart-cantidad" min="1" value="1" placeholder="Cantidad">
-                    </div>
-                </div>
-
-                <div class="admin-inline-actions">
-                    <button type="button" onclick="agregarProductoCarritoAdmin()">Agregar al carrito</button>
-                </div>
-
-                <div class="admin-grid">
-                    <div class="field-group">
-                        <label for="admin-cart-comprador">Comprador</label>
-                        <input type="text" id="admin-cart-comprador" placeholder="Nombre del comprador">
-                    </div>
-
-                    <div class="field-group">
-                        <label for="admin-cart-email">Correo</label>
-                        <input type="email" id="admin-cart-email" placeholder="correo@cliente.com">
-                    </div>
-
-                    <div class="field-group">
-                        <label for="admin-cart-descuento-tipo">Tipo de descuento</label>
-                        <select id="admin-cart-descuento-tipo">
-                            <option value="monto">Monto fijo</option>
-                            <option value="porcentaje">Porcentaje</option>
-                        </select>
-                    </div>
-
-                    <div class="field-group">
-                        <label for="admin-cart-descuento-valor">Descuento</label>
-                        <input type="number" id="admin-cart-descuento-valor" min="0" value="0" placeholder="0">
-                    </div>
-                </div>
-
-                <div class="field-group">
-                    <label for="admin-cart-observaciones">Observaciones</label>
-                    <textarea id="admin-cart-observaciones" rows="4" placeholder="Nota interna, metodo de entrega o referencia de esta venta"></textarea>
-                </div>
-            </div>
-
-            <aside class="admin-cart-panel">
-                <div class="admin-cart-panel-header">
-                    <div>
-                        <span class="catalog-category">Venta asistida</span>
-                        <h3>Resumen del carrito</h3>
-                    </div>
-                    <strong id="admin-cart-badge" class="admin-cart-badge">0 items</strong>
-                </div>
-
-                <div id="admin-cart-items" class="admin-cart-items">
-                    <p class="catalog-loading">Todavía no agregaste productos.</p>
-                </div>
-
-                <div class="admin-cart-summary">
-                    <div><span>Subtotal</span><strong id="admin-cart-subtotal">Bs 0</strong></div>
-                    <div><span>Descuento</span><strong id="admin-cart-descuento">Bs 0</strong></div>
-                    <div class="admin-cart-total"><span>Total final</span><strong id="admin-cart-total">Bs 0</strong></div>
-                </div>
-
-                <div class="admin-inline-actions">
-                    <button type="button" onclick="procesarCarritoAdmin()">Registrar venta</button>
-                </div>
-                <p id="admin-cart-estado"></p>
-            </aside>
         </div>
     </section>
 

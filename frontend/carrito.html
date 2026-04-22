@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrito | Merkateck</title>
+    <link rel="stylesheet" href="css/basico.css">
+</head>
+<body>
+
+<header>
+    <div class="brand-wrap">
+        <img class="brand-logo" src="assets/M.png" alt="Logo de Merkateck">
+        <div class="brand-copy">
+            <h1>Merkateck</h1>
+            <p>Tu carrito de compras</p>
+        </div>
+    </div>
+    <div class="admin-inline-actions">
+        <button type="button" onclick="window.location.href='index.html'">Seguir comprando</button>
+        <button type="button" class="cart-entry-button active-cart-entry" onclick="window.location.href='carrito.html'">
+            Carrito
+            <span id="client-cart-count" class="cart-entry-badge">0</span>
+        </button>
+    </div>
+</header>
+
+<main>
+    <section class="hero-panel cart-hero-panel">
+        <div class="hero-copy">
+            <span class="hero-tag">Compra acumulada</span>
+            <h2>Revisa tu pedido antes de confirmarlo</h2>
+            <p>Puedes seguir agregando productos desde la tienda o cerrar la compra desde aquí cuando estés listo.</p>
+        </div>
+        <div class="hero-side-cards">
+            <article class="hero-mini-card">
+                <strong id="cart-hero-items">0 productos</strong>
+                <span>Tu selección se guarda mientras sigues navegando por la tienda.</span>
+            </article>
+            <article class="hero-mini-card">
+                <strong id="cart-hero-total">Bs 0</strong>
+                <span>El total final se actualiza en tiempo real según las cantidades que elijas.</span>
+            </article>
+        </div>
+    </section>
+
+    <section class="client-cart-shell">
+        <div class="client-cart-main">
+            <div class="upload-header">
+                <div>
+                    <h2>Productos acumulados</h2>
+                    <p>Si quieres, puedes volver a la tienda, agregar más productos y regresar luego.</p>
+                </div>
+                <div class="admin-inline-actions">
+                    <button type="button" onclick="window.location.href='index.html'">Seguir comprando</button>
+                    <button type="button" class="secondary-button" onclick="vaciarCarritoCliente()">Vaciar carrito</button>
+                </div>
+            </div>
+
+            <div id="client-cart-items" class="client-cart-items">
+                <p class="catalog-loading">Tu carrito está vacío por ahora.</p>
+            </div>
+        </div>
+
+        <aside id="client-cart-summary-shell" class="client-cart-summary-shell">
+            <div class="admin-cart-panel-header">
+                <div>
+                    <span class="catalog-category">Cliente</span>
+                    <h3>Resumen de compra</h3>
+                </div>
+                <strong id="client-cart-badge" class="admin-cart-badge">0 items</strong>
+            </div>
+
+            <div class="admin-cart-summary client-cart-summary">
+                <div><span>Subtotal</span><strong id="client-cart-subtotal">Bs 0</strong></div>
+                <div class="admin-cart-total"><span>Total a pagar</span><strong id="client-cart-total">Bs 0</strong></div>
+            </div>
+
+            <div class="field-group">
+                <label for="client-cart-name">Nombre</label>
+                <input type="text" id="client-cart-name" placeholder="Tu nombre o el de quien recibirá el pedido">
+            </div>
+
+            <div class="field-group">
+                <label for="client-cart-email">Correo</label>
+                <input type="email" id="client-cart-email" placeholder="correo@cliente.com">
+            </div>
+
+            <div class="field-group">
+                <label for="client-cart-notes">Notas</label>
+                <textarea id="client-cart-notes" rows="4" placeholder="Referencia adicional para tu compra"></textarea>
+            </div>
+
+            <div class="admin-inline-actions">
+                <button type="button" onclick="finalizarCompraCliente()">Confirmar compra</button>
+            </div>
+            <p id="client-cart-status"></p>
+        </aside>
+    </section>
+</main>
+
+<script src="js/api.js"></script>
+<script src="js/carrito.js"></script>
+</body>
+</html>
