@@ -148,6 +148,263 @@ function formatoMoneda(valor) {
     }).format(monto)}`;
 }
 
+function obtenerCarritoAdmin() {
+    if (!Array.isArray(window.adminCart)) {
+        window.adminCart = [];
+    }
+
+    return window.adminCart;
+}
+
+function calcularResumenCarritoAdmin() {
+    const carrito = obtenerCarritoAdmin();
+    const tipo = document.getElementById('admin-cart-descuento-tipo')?.value || 'monto';
+    const valor = Math.max(0, Number(document.getElementById('admin-cart-descuento-valor')?.value || 0));
+    const subtotal = carrito.reduce((acum, item) => acum + (Number(item.precio || 0) * Number(item.cantidad || 0)), 0);
+    const descuento = tipo === 'porcentaje'
+        ? Math.min(subtotal, subtotal * (valor / 100))
+        : Math.min(subtotal, valor);
+
+    return {
+        items: carrito.length,
+        subtotal,
+        descuento,
+        total: Math.max(0, subtotal - descuento)
+    };
+}
+
+function animarCarritoAdmin() {
+    const shell = document.getElementById('admin-cart-shell');
+    if (!shell) {
+        return;
+    }
+
+    shell.classList.remove('cart-bump');
+    window.requestAnimationFrame(() => {
+        shell.classList.add('cart-bump');
+        window.setTimeout(() => shell.classList.remove('cart-bump'), 500);
+    });
+}
+
+function actualizarOpcionesCarritoAdmin() {
+    const select = document.getElementById('admin-cart-producto');
+    if (!select) {
+        return;
+    }
+
+    const productos = (window.adminProductos || []).filter((producto) => Number(producto.stock || 0) > 0);
+    const actual = select.value;
+
+    select.innerHTML = ['<option value="">Selecciona un producto</option>']
+        .concat(productos.map((producto) => `
+            <option value="${producto.id}">${escapeHtml(producto.nombre)} · ${formatoMoneda(producto.precio)} · Stock ${Number(producto.stock || 0)}</option>
+        `))
+        .join('');
+
+    if (productos.some((producto) => String(producto.id) === String(actual))) {
+        select.value = actual;
+    }
+}
+
+function renderCarritoAdmin() {
+    const itemsWrap = document.getElementById('admin-cart-items');
+    const subtotal = document.getElementById('admin-cart-subtotal');
+    const descuento = document.getElementById('admin-cart-descuento');
+    const total = document.getElementById('admin-cart-total');
+    const badge = document.getElementById('admin-cart-badge');
+
+    if (!itemsWrap || !subtotal || !descuento || !total || !badge) {
+        return;
+    }
+
+    const carrito = obtenerCarritoAdmin();
+    const resumen = calcularResumenCarritoAdmin();
+
+    if (!carrito.length) {
+        itemsWrap.innerHTML = '<p class="catalog-loading">Todavía no agregaste productos.</p>';
+    } else {
+        itemsWrap.innerHTML = carrito.map((item) => `
+            <article class="admin-cart-item">
+                <div>
+                    <strong>${escapeHtml(item.nombre)}</strong>
+                    <p>${escapeHtml(item.categoria || 'General')} · ${formatoMoneda(item.precio)} c/u</p>
+                    <small>Stock visible: ${Number(item.stock || 0)}</small>
+                </div>
+                <div class="admin-cart-item-actions">
+                    <div class="quantity-chip">
+                        <button type="button" onclick="ajustarCantidadCarritoAdmin(${item.id}, -1)">-</button>
+                        <span>${Number(item.cantidad || 0)}</span>
+                        <button type="button" onclick="ajustarCantidadCarritoAdmin(${item.id}, 1)">+</button>
+                    </div>
+                    <strong>${formatoMoneda(Number(item.precio || 0) * Number(item.cantidad || 0))}</strong>
+                    <button type="button" class="secondary-button" onclick="quitarProductoCarritoAdmin(${item.id})">Quitar</button>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    badge.textContent = `${resumen.items} ${resumen.items === 1 ? 'item' : 'items'}`;
+    subtotal.textContent = formatoMoneda(resumen.subtotal);
+    descuento.textContent = formatoMoneda(resumen.descuento);
+    total.textContent = formatoMoneda(resumen.total);
+}
+
+function agregarProductoCarritoAdmin() {
+    const select = document.getElementById('admin-cart-producto');
+    const cantidadInput = document.getElementById('admin-cart-cantidad');
+    const estado = document.getElementById('admin-cart-estado');
+
+    if (!select || !cantidadInput || !estado) {
+        return;
+    }
+
+    const productoId = Number(select.value || 0);
+    const cantidad = Math.max(1, Number(cantidadInput.value || 1));
+    const producto = (window.adminProductos || []).find((item) => Number(item.id) === productoId);
+
+    if (!producto) {
+        estado.textContent = 'Selecciona un producto valido.';
+        return;
+    }
+
+    if (Number(producto.stock || 0) < cantidad) {
+        estado.textContent = 'La cantidad supera el stock disponible.';
+        return;
+    }
+
+    const carrito = obtenerCarritoAdmin();
+    const existente = carrito.find((item) => Number(item.id) === productoId);
+
+    if (existente) {
+        const nuevaCantidad = existente.cantidad + cantidad;
+        if (nuevaCantidad > Number(producto.stock || 0)) {
+            estado.textContent = 'No puedes superar el stock disponible en el carrito.';
+            return;
+        }
+
+        existente.cantidad = nuevaCantidad;
+    } else {
+        carrito.push({
+            id: producto.id,
+            nombre: producto.nombre,
+            categoria: producto.categoria,
+            precio: Number(producto.precio || 0),
+            stock: Number(producto.stock || 0),
+            cantidad
+        });
+    }
+
+    cantidadInput.value = '1';
+    estado.textContent = `${producto.nombre} agregado al carrito.`;
+    renderCarritoAdmin();
+    animarCarritoAdmin();
+}
+
+function ajustarCantidadCarritoAdmin(id, delta) {
+    const carrito = obtenerCarritoAdmin();
+    const item = carrito.find((actual) => Number(actual.id) === Number(id));
+    const estado = document.getElementById('admin-cart-estado');
+
+    if (!item) {
+        return;
+    }
+
+    const nuevoValor = item.cantidad + delta;
+    if (nuevoValor <= 0) {
+        window.adminCart = carrito.filter((actual) => Number(actual.id) !== Number(id));
+    } else if (nuevoValor <= Number(item.stock || 0)) {
+        item.cantidad = nuevoValor;
+    } else if (estado) {
+        estado.textContent = 'No puedes superar el stock disponible.';
+    }
+
+    renderCarritoAdmin();
+}
+
+function quitarProductoCarritoAdmin(id) {
+    window.adminCart = obtenerCarritoAdmin().filter((item) => Number(item.id) !== Number(id));
+    renderCarritoAdmin();
+}
+
+function vaciarCarritoAdmin(mantenerEstado = false) {
+    window.adminCart = [];
+    const estado = document.getElementById('admin-cart-estado');
+    if (estado && !mantenerEstado) {
+        estado.textContent = 'Carrito reiniciado.';
+    }
+    renderCarritoAdmin();
+}
+
+async function procesarCarritoAdmin() {
+    const carrito = obtenerCarritoAdmin();
+    const estado = document.getElementById('admin-cart-estado');
+    const usuario = obtenerUsuarioSesion();
+
+    if (!estado || !usuarioEsAdmin()) {
+        return;
+    }
+
+    if (!carrito.length) {
+        estado.textContent = 'Agrega al menos un producto antes de registrar la venta.';
+        return;
+    }
+
+    const payload = {
+        items: carrito.map((item) => ({ productoId: item.id, cantidad: item.cantidad })),
+        nombreComprador: document.getElementById('admin-cart-comprador')?.value?.trim() || 'Cliente atendido por admin',
+        emailComprador: document.getElementById('admin-cart-email')?.value?.trim() || '',
+        descuentoTipo: document.getElementById('admin-cart-descuento-tipo')?.value || 'monto',
+        descuentoValor: Number(document.getElementById('admin-cart-descuento-valor')?.value || 0),
+        observaciones: document.getElementById('admin-cart-observaciones')?.value?.trim() || '',
+        actorEmail: usuario.email,
+        canalVenta: 'admin_panel'
+    };
+
+    estado.textContent = 'Registrando venta...';
+
+    try {
+        const resultado = await API.comprarProducto(payload);
+        estado.textContent = resultado.mensaje || 'Venta registrada.';
+
+        if (resultado.ok) {
+            vaciarCarritoAdmin(true);
+            const ids = ['admin-cart-comprador', 'admin-cart-email', 'admin-cart-observaciones'];
+            ids.forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = '';
+                }
+            });
+
+            const descuentoValor = document.getElementById('admin-cart-descuento-valor');
+            const descuentoTipo = document.getElementById('admin-cart-descuento-tipo');
+            if (descuentoValor) descuentoValor.value = '0';
+            if (descuentoTipo) descuentoTipo.value = 'monto';
+
+            await cargarProductosAdmin();
+            await cargarHistorialVentas();
+            await cargarDashboardAdmin();
+            renderCarritoAdmin();
+            estado.textContent = resultado.mensaje || 'Venta registrada.';
+        }
+    } catch (error) {
+        estado.textContent = 'No se pudo registrar la venta administrada.';
+    }
+}
+
+function activarControlesCarritoAdmin() {
+    ['admin-cart-descuento-tipo', 'admin-cart-descuento-valor'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', renderCarritoAdmin);
+            element.addEventListener('change', renderCarritoAdmin);
+        }
+    });
+
+    actualizarOpcionesCarritoAdmin();
+    renderCarritoAdmin();
+}
+
 async function cargarUsuariosAutorizados() {
     const tbody = document.getElementById('usuarios-body');
     const usuario = obtenerUsuarioSesion();
@@ -237,6 +494,7 @@ async function cargarProductosAdmin() {
 
         if (!resultado.ok || productos.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7">No hay productos creados.</td></tr>';
+            actualizarOpcionesCarritoAdmin();
             return;
         }
 
@@ -254,8 +512,10 @@ async function cargarProductosAdmin() {
                 </td>
             </tr>
         `).join('');
+        actualizarOpcionesCarritoAdmin();
     } catch (error) {
         tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar el catálogo de gestión.</td></tr>';
+        actualizarOpcionesCarritoAdmin();
     }
 }
 
@@ -265,7 +525,7 @@ async function cargarHistorialVentas() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6">Cargando ventas...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10">Cargando ventas...</td></tr>';
 
     try {
         const resultado = await API.obtenerHistorialVentas(obtenerUsuarioSesion().email);
@@ -273,13 +533,13 @@ async function cargarHistorialVentas() {
         window.historialVentas = ventas;
 
         if (!resultado.ok || ventas.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">No hay ventas registradas todavía.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10">No hay ventas registradas todavía.</td></tr>';
             return;
         }
 
         renderHistorialVentas();
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar el historial de ventas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10">No se pudo cargar el historial de ventas.</td></tr>';
     }
 }
 
@@ -311,17 +571,21 @@ function renderHistorialVentas() {
     const ventas = obtenerVentasFiltradas();
 
     if (!ventas.length) {
-        tbody.innerHTML = '<tr><td colspan="6">No hay ventas para esos filtros.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10">No hay ventas para esos filtros.</td></tr>';
         return;
     }
 
     tbody.innerHTML = ventas.map((venta) => `
             <tr>
                 <td>${escapeHtml(formatearFecha(venta.fecha))}</td>
+                <td>${escapeHtml(venta.venta_grupo_id || '-')}</td>
                 <td>${escapeHtml(venta.producto_nombre)}</td>
                 <td>${venta.origen_producto === 'vendedor' ? 'Vendedor' : 'Tienda'}</td>
+                <td>${escapeHtml(venta.canal_venta || 'tienda_web')}</td>
                 <td>${escapeHtml(venta.comprador_nombre || venta.comprador_email || 'Cliente web')}</td>
                 <td>${Number(venta.cantidad || 0)}</td>
+                <td>${formatoMoneda(venta.subtotal || venta.total || 0)}</td>
+                <td>${formatoMoneda(venta.descuento || 0)}</td>
                 <td>${formatoMoneda(venta.total || 0)}</td>
             </tr>
         `).join('');
@@ -346,14 +610,18 @@ function exportarVentasCsv() {
     }
 
     const rows = [
-        ['fecha', 'producto', 'origen', 'comprador', 'email_comprador', 'cantidad', 'total']
+        ['fecha', 'grupo', 'producto', 'origen', 'canal', 'comprador', 'email_comprador', 'cantidad', 'subtotal', 'descuento', 'total']
     ].concat(ventas.map((venta) => ([
         formatearFecha(venta.fecha),
+        venta.venta_grupo_id || '',
         venta.producto_nombre || '',
         venta.origen_producto || '',
+        venta.canal_venta || '',
         venta.comprador_nombre || '',
         venta.comprador_email || '',
         Number(venta.cantidad || 0),
+        Number(venta.subtotal || venta.total || 0),
+        Number(venta.descuento || 0),
         Number(venta.total || 0)
     ])));
 
@@ -622,6 +890,7 @@ async function cargarDashboardAdmin() {
 
 document.addEventListener('DOMContentLoaded', iniciarPreviewProducto);
 document.addEventListener('DOMContentLoaded', activarFiltrosVentas);
+document.addEventListener('DOMContentLoaded', activarControlesCarritoAdmin);
 
 function logout() {
     sessionStorage.removeItem('auth');

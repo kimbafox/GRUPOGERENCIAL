@@ -23,9 +23,7 @@
 </header>
 
 <main>
-    <section id="inicio" class="hero-panel storefront-hero">
-        
-    </section>
+    
 
     <section class="promo-carousel">
         <div class="carousel-header">
@@ -114,6 +112,17 @@
                         <span id="detalle-producto-origen">Origen: Tienda</span>
                         <span id="detalle-producto-vendedor" class="oculto">Vendedor</span>
                     </div>
+                    <details id="detalle-producto-venta" class="product-sale-panel">
+                        <summary>
+                            <span>Ver forma de venta</span>
+                            <small id="detalle-producto-venta-resumen">Compra disponible</small>
+                        </summary>
+                        <div class="product-sale-content">
+                            <strong id="detalle-producto-venta-titulo">Venta del producto</strong>
+                            <p id="detalle-producto-venta-descripcion">Aquí verás cómo se gestiona esta venta.</p>
+                            <ul id="detalle-producto-venta-lista" class="product-sale-list"></ul>
+                        </div>
+                    </details>
                     <div class="catalog-actions product-detail-actions">
                         <button type="button" id="detalle-producto-comprar">Comprar</button>
                         <button type="button" class="secondary-button" onclick="cerrarDetalleProducto()">Cerrar</button>

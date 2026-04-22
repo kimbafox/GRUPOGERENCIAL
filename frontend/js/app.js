@@ -29,6 +29,61 @@ function escaparHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function obtenerEstadoStock(stock) {
+    const cantidad = Number(stock || 0);
+
+    if (cantidad <= 0) {
+        return {
+            etiqueta: 'Agotado',
+            resumen: 'Sin stock disponible',
+            descripcion: 'Este producto ya no tiene unidades disponibles en este momento.'
+        };
+    }
+
+    if (cantidad <= 3) {
+        return {
+            etiqueta: 'Ultimas unidades',
+            resumen: `Quedan ${cantidad} unidades`,
+            descripcion: 'El producto sigue activo, pero ya tiene pocas unidades disponibles.'
+        };
+    }
+
+    return {
+        etiqueta: 'Disponible',
+        resumen: `Stock activo: ${cantidad}`,
+        descripcion: 'La venta esta habilitada y el producto tiene disponibilidad inmediata.'
+    };
+}
+
+function construirVentaProducto(producto) {
+    const stock = Number(producto.stock || 0);
+    const estadoStock = obtenerEstadoStock(stock);
+    const esVendedor = producto.origen_producto === 'vendedor';
+    const origenTexto = esVendedor ? 'Vendedor asociado' : 'Tienda Merkateck';
+    const titulo = esVendedor ? 'Venta gestionada por vendedor' : 'Venta directa de tienda';
+    const descripcion = esVendedor
+        ? 'La plataforma muestra el producto y registra la compra; la entrega se coordina con el vendedor publicado.'
+        : 'La compra se procesa directamente desde el catalogo principal y queda lista para seguimiento interno.';
+    const lista = [
+        `Canal de venta: ${origenTexto}`,
+        `Precio actual: ${formatoMoneda(producto.precio)}`,
+        `Estado: ${estadoStock.etiqueta}`,
+        stock > 0 ? `Cantidad disponible para compra: ${stock}` : 'No se aceptan nuevas compras hasta reponer stock'
+    ];
+
+    if (esVendedor && producto.vendedor_nombre) {
+        lista.splice(1, 0, `Responsable: ${producto.vendedor_nombre}`);
+    }
+
+    return {
+        titulo,
+        resumen: `${estadoStock.resumen} · ${origenTexto}`,
+        descripcion: `${descripcion} ${estadoStock.descripcion}`,
+        lista,
+        expandido: !esVendedor || stock <= 3
+    };
+}
+
 function iniciarCarruselPromos() {
     const track = document.getElementById('promoTrack');
     if (!track) {
@@ -133,6 +188,16 @@ function renderCatalogo(productos) {
 
     const productosTienda = productos.filter((producto) => producto.origen_producto === 'tienda');
     const productosVendedores = productos.filter((producto) => producto.origen_producto === 'vendedor');
+    const renderAccionesProducto = (producto) => {
+        const sinStock = Number(producto.stock || 0) <= 0;
+
+        return `
+            <div class="catalog-actions">
+                <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
+                <button type="button" onclick="comprarProducto(${producto.id})" ${sinStock ? 'disabled' : ''}>${sinStock ? 'Agotado' : 'Comprar'}</button>
+            </div>
+        `;
+    };
 
     const renderGrupo = (clave, titulo, descripcion, items, mostrarVendedor) => `
         <section class="catalog-group ${obtenerEstadoGrupoCatalogo(clave) ? 'expanded' : 'collapsed'}">
@@ -163,10 +228,7 @@ function renderCatalogo(productos) {
                                             <strong>${formatoMoneda(producto.precio)}</strong>
                                             <small>Stock: ${Number(producto.stock || 0)}</small>
                                         </div>
-                                        <div class="catalog-actions">
-                                            <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
-                                            <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
-                                        </div>
+                                        ${renderAccionesProducto(producto)}
                                     </div>
                                 </div>
                             </article>
@@ -240,11 +302,19 @@ function verDetalleProducto(id) {
     const stock = document.getElementById('detalle-producto-stock');
     const origen = document.getElementById('detalle-producto-origen');
     const vendedor = document.getElementById('detalle-producto-vendedor');
+    const venta = document.getElementById('detalle-producto-venta');
+    const ventaResumen = document.getElementById('detalle-producto-venta-resumen');
+    const ventaTitulo = document.getElementById('detalle-producto-venta-titulo');
+    const ventaDescripcion = document.getElementById('detalle-producto-venta-descripcion');
+    const ventaLista = document.getElementById('detalle-producto-venta-lista');
     const comprar = document.getElementById('detalle-producto-comprar');
 
-    if (!modal || !imagen || !categoria || !nombre || !descripcion || !precio || !stock || !origen || !vendedor || !comprar) {
+    if (!modal || !imagen || !categoria || !nombre || !descripcion || !precio || !stock || !origen || !vendedor || !venta || !ventaResumen || !ventaTitulo || !ventaDescripcion || !ventaLista || !comprar) {
         return;
     }
+
+    const ventaProducto = construirVentaProducto(producto);
+    const sinStock = Number(producto.stock || 0) <= 0;
 
     imagen.src = producto.imagen_url || 'assets/M.png';
     imagen.alt = producto.nombre || 'Detalle del producto';
@@ -263,7 +333,15 @@ function verDetalleProducto(id) {
         vendedor.classList.add('oculto');
     }
 
+    ventaResumen.textContent = ventaProducto.resumen;
+    ventaTitulo.textContent = ventaProducto.titulo;
+    ventaDescripcion.textContent = ventaProducto.descripcion;
+    ventaLista.innerHTML = ventaProducto.lista.map((item) => `<li>${escaparHtml(item)}</li>`).join('');
+    venta.open = ventaProducto.expandido;
+
     comprar.onclick = () => comprarProducto(producto.id);
+    comprar.disabled = sinStock;
+    comprar.textContent = sinStock ? 'Agotado' : 'Comprar';
     modal.classList.remove('oculto');
 }
 
@@ -278,6 +356,11 @@ async function comprarProducto(id) {
     const producto = (window.catalogoProductos || []).find((item) => Number(item.id) === Number(id));
     if (!producto) {
         alert('No se encontró el producto.');
+        return;
+    }
+
+    if (Number(producto.stock || 0) <= 0) {
+        alert('Este producto no tiene stock disponible en este momento.');
         return;
     }
 

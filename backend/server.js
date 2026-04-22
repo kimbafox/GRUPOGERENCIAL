@@ -147,6 +147,14 @@ function aNumero(value) {
     return Number(value || 0);
 }
 
+function redondearMoneda(value) {
+    return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function crearGrupoVentaId() {
+    return `VENTA-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
 function mapearProducto(producto) {
     return {
         ...producto,
@@ -568,6 +576,18 @@ async function asegurarModeloExtendido() {
     await asegurarColumna('productos', 'vendedor_email', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
     await asegurarColumna('productos', 'vendedor_nombre', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
     await asegurarColumna('productos', 'aprobado', 'INTEGER NOT NULL DEFAULT 1', 'INTEGER NOT NULL DEFAULT 1');
+    await asegurarColumna('ventas', 'venta_grupo_id', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
+    await asegurarColumna('ventas', 'subtotal', 'REAL NOT NULL DEFAULT 0', 'DOUBLE PRECISION NOT NULL DEFAULT 0');
+    await asegurarColumna('ventas', 'descuento', 'REAL NOT NULL DEFAULT 0', 'DOUBLE PRECISION NOT NULL DEFAULT 0');
+    await asegurarColumna('ventas', 'canal_venta', "TEXT NOT NULL DEFAULT 'tienda_web'", "TEXT NOT NULL DEFAULT 'tienda_web'");
+    await asegurarColumna('ventas', 'actor_email', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
+    await asegurarColumna('ventas', 'observaciones', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
+    await asegurarColumna('compras', 'venta_grupo_id', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
+    await asegurarColumna('compras', 'subtotal', 'REAL NOT NULL DEFAULT 0', 'DOUBLE PRECISION NOT NULL DEFAULT 0');
+    await asegurarColumna('compras', 'descuento', 'REAL NOT NULL DEFAULT 0', 'DOUBLE PRECISION NOT NULL DEFAULT 0');
+    await asegurarColumna('compras', 'canal_venta', "TEXT NOT NULL DEFAULT 'tienda_web'", "TEXT NOT NULL DEFAULT 'tienda_web'");
+    await asegurarColumna('compras', 'actor_email', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
+    await asegurarColumna('compras', 'observaciones', "TEXT DEFAULT ''", "TEXT DEFAULT ''");
 
     await dbExecute(sql(
         `UPDATE usuarios
@@ -609,10 +629,46 @@ async function asegurarModeloExtendido() {
              aprobado = COALESCE(aprobado, 1)`
     ));
 
+    await dbExecute(sql(
+        `UPDATE ventas
+         SET venta_grupo_id = COALESCE(venta_grupo_id, ''),
+             subtotal = CASE WHEN COALESCE(subtotal, 0) <= 0 THEN COALESCE(total, 0) ELSE subtotal END,
+             descuento = COALESCE(descuento, 0),
+             canal_venta = CASE WHEN TRIM(COALESCE(canal_venta, '')) = '' THEN 'tienda_web' ELSE canal_venta END,
+             actor_email = COALESCE(actor_email, ''),
+             observaciones = COALESCE(observaciones, '')`,
+        `UPDATE ventas
+         SET venta_grupo_id = COALESCE(venta_grupo_id, ''),
+             subtotal = CASE WHEN COALESCE(subtotal, 0) <= 0 THEN COALESCE(total, 0) ELSE subtotal END,
+             descuento = COALESCE(descuento, 0),
+             canal_venta = CASE WHEN BTRIM(COALESCE(canal_venta, '')) = '' THEN 'tienda_web' ELSE canal_venta END,
+             actor_email = COALESCE(actor_email, ''),
+             observaciones = COALESCE(observaciones, '')`
+    ));
+
+    await dbExecute(sql(
+        `UPDATE compras
+         SET venta_grupo_id = COALESCE(venta_grupo_id, ''),
+             subtotal = CASE WHEN COALESCE(subtotal, 0) <= 0 THEN COALESCE(total, 0) ELSE subtotal END,
+             descuento = COALESCE(descuento, 0),
+             canal_venta = CASE WHEN TRIM(COALESCE(canal_venta, '')) = '' THEN 'tienda_web' ELSE canal_venta END,
+             actor_email = COALESCE(actor_email, ''),
+             observaciones = COALESCE(observaciones, '')`,
+        `UPDATE compras
+         SET venta_grupo_id = COALESCE(venta_grupo_id, ''),
+             subtotal = CASE WHEN COALESCE(subtotal, 0) <= 0 THEN COALESCE(total, 0) ELSE subtotal END,
+             descuento = COALESCE(descuento, 0),
+             canal_venta = CASE WHEN BTRIM(COALESCE(canal_venta, '')) = '' THEN 'tienda_web' ELSE canal_venta END,
+             actor_email = COALESCE(actor_email, ''),
+             observaciones = COALESCE(observaciones, '')`
+    ));
+
     await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_usuarios_role ON usuarios (role)'));
     await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_registro_usuarios_email ON registro_usuarios (email)'));
     await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_productos_origen ON productos (origen_producto)'));
     await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_productos_vendedor_email ON productos (vendedor_email)'));
+    await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_ventas_grupo ON ventas (venta_grupo_id)'));
+    await dbExecute(sql('CREATE INDEX IF NOT EXISTS idx_compras_grupo ON compras (venta_grupo_id)'));
 }
 
 async function inicializarBaseDeDatos() {
@@ -735,9 +791,15 @@ async function inicializarBaseDeDatos() {
                 producto_id INTEGER NOT NULL,
                 producto_nombre TEXT NOT NULL,
                 cantidad INTEGER NOT NULL DEFAULT 1,
+                subtotal REAL NOT NULL DEFAULT 0,
+                descuento REAL NOT NULL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
+                venta_grupo_id TEXT DEFAULT '',
+                canal_venta TEXT NOT NULL DEFAULT 'tienda_web',
+                actor_email TEXT DEFAULT '',
                 comprador_nombre TEXT,
                 comprador_email TEXT,
+                observaciones TEXT DEFAULT '',
                 fecha TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (producto_id) REFERENCES productos (id)
             )`,
@@ -746,9 +808,15 @@ async function inicializarBaseDeDatos() {
                 producto_id INTEGER NOT NULL REFERENCES productos (id),
                 producto_nombre TEXT NOT NULL,
                 cantidad INTEGER NOT NULL DEFAULT 1,
+                subtotal DOUBLE PRECISION NOT NULL DEFAULT 0,
+                descuento DOUBLE PRECISION NOT NULL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
+                venta_grupo_id TEXT DEFAULT '',
+                canal_venta TEXT NOT NULL DEFAULT 'tienda_web',
+                actor_email TEXT DEFAULT '',
                 comprador_nombre TEXT,
                 comprador_email TEXT,
+                observaciones TEXT DEFAULT '',
                 fecha TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )`
         ),
@@ -759,9 +827,15 @@ async function inicializarBaseDeDatos() {
                 producto_id INTEGER,
                 producto_nombre TEXT NOT NULL,
                 cantidad INTEGER NOT NULL DEFAULT 1,
+                subtotal REAL NOT NULL DEFAULT 0,
+                descuento REAL NOT NULL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
+                venta_grupo_id TEXT DEFAULT '',
+                canal_venta TEXT NOT NULL DEFAULT 'tienda_web',
+                actor_email TEXT DEFAULT '',
                 comprador_nombre TEXT,
                 comprador_email TEXT,
+                observaciones TEXT DEFAULT '',
                 fecha TEXT DEFAULT CURRENT_TIMESTAMP,
                 creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (producto_id) REFERENCES productos (id)
@@ -772,9 +846,15 @@ async function inicializarBaseDeDatos() {
                 producto_id INTEGER REFERENCES productos (id),
                 producto_nombre TEXT NOT NULL,
                 cantidad INTEGER NOT NULL DEFAULT 1,
+                subtotal DOUBLE PRECISION NOT NULL DEFAULT 0,
+                descuento DOUBLE PRECISION NOT NULL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
+                venta_grupo_id TEXT DEFAULT '',
+                canal_venta TEXT NOT NULL DEFAULT 'tienda_web',
+                actor_email TEXT DEFAULT '',
                 comprador_nombre TEXT,
                 comprador_email TEXT,
+                observaciones TEXT DEFAULT '',
                 fecha TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )`
@@ -1215,72 +1295,175 @@ app.delete('/api/productos/:id', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const productoId = parseInt(req.body?.productoId, 10);
-    const cantidad = Math.max(1, parseInt(req.body?.cantidad, 10) || 1);
     const compradorNombre = String(req.body?.nombreComprador || 'Cliente web').trim();
     const compradorEmail = String(req.body?.emailComprador || '').trim().toLowerCase();
+    const actorEmail = String(req.body?.actorEmail || '').trim().toLowerCase();
+    const observaciones = String(req.body?.observaciones || '').trim();
+    const descuentoTipo = String(req.body?.descuentoTipo || 'monto').trim().toLowerCase();
+    const descuentoValorSolicitado = Math.max(0, Number(req.body?.descuentoValor || 0));
+    const canalVentaSolicitado = String(req.body?.canalVenta || '').trim().toLowerCase();
+    const itemsEntrada = Array.isArray(req.body?.items) && req.body.items.length
+        ? req.body.items
+        : [{ productoId: req.body?.productoId, cantidad: req.body?.cantidad }];
+    const itemsNormalizados = [];
 
-    if (!productoId) {
-        res.status(400).json({ ok: false, mensaje: 'Producto invalido.' });
+    for (const item of itemsEntrada) {
+        const productoId = parseInt(item?.productoId, 10);
+        const cantidad = Math.max(1, parseInt(item?.cantidad, 10) || 1);
+
+        if (!productoId) {
+            res.status(400).json({ ok: false, mensaje: 'Producto invalido.' });
+            return;
+        }
+
+        const existente = itemsNormalizados.find((actual) => actual.productoId === productoId);
+        if (existente) {
+            existente.cantidad += cantidad;
+        } else {
+            itemsNormalizados.push({ productoId, cantidad });
+        }
+    }
+
+    if (!itemsNormalizados.length) {
+        res.status(400).json({ ok: false, mensaje: 'Debes enviar al menos un producto.' });
         return;
     }
 
+    const compraAdministrada = itemsNormalizados.length > 1 || descuentoValorSolicitado > 0 || Boolean(actorEmail) || canalVentaSolicitado === 'admin_panel';
+
     try {
+        let actor = null;
+
+        if (compraAdministrada) {
+            actor = await autenticarRequest(req, ['admin'], actorEmail || req.headers['x-user-email']);
+        }
+
         const compra = await conTransaccion(async (query) => {
-            const producto = await query.get(sql(
-                `SELECT id, nombre, precio, stock, activo, aprobado
-                 FROM productos
-                 WHERE id = ? AND activo = 1 AND aprobado = 1
-                 LIMIT 1`,
-                `SELECT id, nombre, precio, stock, activo, aprobado
-                 FROM productos
-                 WHERE id = $1 AND activo = 1 AND aprobado = 1
-                 LIMIT 1 FOR UPDATE`
-            ), [productoId]);
+            const itemsProcesados = [];
 
-            if (!producto) {
-                throw crearErrorHttp(404, 'El producto ya no esta disponible.');
+            for (const item of itemsNormalizados) {
+                const producto = await query.get(sql(
+                    `SELECT id, nombre, precio, stock, activo, aprobado
+                     FROM productos
+                     WHERE id = ? AND activo = 1 AND aprobado = 1
+                     LIMIT 1`,
+                    `SELECT id, nombre, precio, stock, activo, aprobado
+                     FROM productos
+                     WHERE id = $1 AND activo = 1 AND aprobado = 1
+                     LIMIT 1 FOR UPDATE`
+                ), [item.productoId]);
+
+                if (!producto) {
+                    throw crearErrorHttp(404, 'Uno de los productos ya no esta disponible.');
+                }
+
+                if (aNumero(producto.stock) < item.cantidad) {
+                    throw crearErrorHttp(400, `No hay suficiente stock para ${producto.nombre}.`);
+                }
+
+                itemsProcesados.push({
+                    producto,
+                    cantidad: item.cantidad,
+                    subtotal: redondearMoneda(Number(producto.precio || 0) * item.cantidad)
+                });
             }
 
-            if (aNumero(producto.stock) < cantidad) {
-                throw crearErrorHttp(400, 'No hay suficiente stock para esta compra.');
-            }
+            const subtotalGeneral = redondearMoneda(itemsProcesados.reduce((acum, item) => acum + item.subtotal, 0));
+            const descuentoCalculado = descuentoTipo === 'porcentaje'
+                ? redondearMoneda(subtotalGeneral * (descuentoValorSolicitado / 100))
+                : redondearMoneda(descuentoValorSolicitado);
+            const descuentoGeneral = Math.min(subtotalGeneral, descuentoCalculado);
+            const ventaGrupoId = itemsProcesados.length > 1 || descuentoGeneral > 0 ? crearGrupoVentaId() : '';
+            const canalVenta = compraAdministrada ? 'admin_panel' : (canalVentaSolicitado || 'tienda_web');
+            let descuentoRestante = descuentoGeneral;
 
-            const total = Number(producto.precio || 0) * cantidad;
+            for (let index = 0; index < itemsProcesados.length; index += 1) {
+                const item = itemsProcesados[index];
+                const descuentoLinea = index === itemsProcesados.length - 1
+                    ? descuentoRestante
+                    : redondearMoneda(descuentoGeneral * (item.subtotal / Math.max(subtotalGeneral, 1)));
+                const totalLinea = redondearMoneda(item.subtotal - descuentoLinea);
+                descuentoRestante = redondearMoneda(descuentoRestante - descuentoLinea);
 
-            const venta = await query.execute(sql(
-                `INSERT INTO ventas (producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-                `INSERT INTO ventas (producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
-                 VALUES ($1, $2, $3, $4, $5, $6)
-                 RETURNING id`
-            ), [producto.id, producto.nombre, cantidad, total, compradorNombre, compradorEmail]);
+                const venta = await query.execute(sql(
+                    `INSERT INTO ventas (
+                        producto_id, producto_nombre, cantidad, subtotal, descuento, total, venta_grupo_id,
+                        canal_venta, actor_email, comprador_nombre, comprador_email, observaciones
+                    )
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO ventas (
+                        producto_id, producto_nombre, cantidad, subtotal, descuento, total, venta_grupo_id,
+                        canal_venta, actor_email, comprador_nombre, comprador_email, observaciones
+                    )
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                     RETURNING id`
+                ), [
+                    item.producto.id,
+                    item.producto.nombre,
+                    item.cantidad,
+                    item.subtotal,
+                    descuentoLinea,
+                    totalLinea,
+                    ventaGrupoId,
+                    canalVenta,
+                    actor?.email || '',
+                    compradorNombre,
+                    compradorEmail,
+                    observaciones
+                ]);
 
-            await query.execute(sql(
-                `INSERT INTO compras (legacy_venta_id, producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                `INSERT INTO compras (legacy_venta_id, producto_id, producto_nombre, cantidad, total, comprador_nombre, comprador_email)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`
-            ), [venta.lastID, producto.id, producto.nombre, cantidad, total, compradorNombre, compradorEmail]);
+                await query.execute(sql(
+                    `INSERT INTO compras (
+                        legacy_venta_id, producto_id, producto_nombre, cantidad, subtotal, descuento, total,
+                        venta_grupo_id, canal_venta, actor_email, comprador_nombre, comprador_email, observaciones
+                    )
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO compras (
+                        legacy_venta_id, producto_id, producto_nombre, cantidad, subtotal, descuento, total,
+                        venta_grupo_id, canal_venta, actor_email, comprador_nombre, comprador_email, observaciones
+                    )
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+                ), [
+                    venta.lastID,
+                    item.producto.id,
+                    item.producto.nombre,
+                    item.cantidad,
+                    item.subtotal,
+                    descuentoLinea,
+                    totalLinea,
+                    ventaGrupoId,
+                    canalVenta,
+                    actor?.email || '',
+                    compradorNombre,
+                    compradorEmail,
+                    observaciones
+                ]);
 
-            const actualizacion = await query.execute(sql(
-                'UPDATE productos SET stock = stock - ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?',
-                'UPDATE productos SET stock = stock - $1, actualizado_en = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id'
-            ), [cantidad, producto.id]);
+                const actualizacion = await query.execute(sql(
+                    'UPDATE productos SET stock = stock - ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?',
+                    'UPDATE productos SET stock = stock - $1, actualizado_en = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id'
+                ), [item.cantidad, item.producto.id]);
 
-            if (!actualizacion.changes) {
-                throw crearErrorHttp(500, 'No se pudo registrar la compra.');
+                if (!actualizacion.changes) {
+                    throw crearErrorHttp(500, 'No se pudo registrar la compra.');
+                }
             }
 
             return {
-                nombre: producto.nombre,
-                total
+                nombre: itemsProcesados.length === 1 ? itemsProcesados[0].producto.nombre : `${itemsProcesados.length} productos`,
+                subtotal: subtotalGeneral,
+                descuento: descuentoGeneral,
+                total: redondearMoneda(subtotalGeneral - descuentoGeneral),
+                items: itemsProcesados.length,
+                ventaGrupoId
             };
         });
 
         res.status(201).json({
             ok: true,
             mensaje: `Compra registrada: ${compra.nombre}`,
+            subtotal: compra.subtotal,
+            descuento: compra.descuento,
             total: compra.total
         });
     } catch (error) {
@@ -1302,15 +1485,17 @@ app.get('/api/historial/ventas', async (req, res) => {
         }
 
         const ventas = await dbAll(sql(
-            `SELECT v.id, v.producto_id, v.producto_nombre, v.cantidad, v.total, v.comprador_nombre, v.comprador_email,
-                    v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
+            `SELECT v.id, v.venta_grupo_id, v.producto_id, v.producto_nombre, v.cantidad, v.subtotal, v.descuento,
+                v.total, v.canal_venta, v.actor_email, v.observaciones, v.comprador_nombre, v.comprador_email,
+                v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
              FROM ventas v
              INNER JOIN productos p ON p.id = v.producto_id
              ${whereSqlite}
              ORDER BY v.fecha DESC, v.id DESC
              LIMIT 100`,
-            `SELECT v.id, v.producto_id, v.producto_nombre, v.cantidad, v.total, v.comprador_nombre, v.comprador_email,
-                    v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
+            `SELECT v.id, v.venta_grupo_id, v.producto_id, v.producto_nombre, v.cantidad, v.subtotal, v.descuento,
+                v.total, v.canal_venta, v.actor_email, v.observaciones, v.comprador_nombre, v.comprador_email,
+                v.fecha, p.origen_producto, p.vendedor_nombre, p.vendedor_email
              FROM ventas v
              INNER JOIN productos p ON p.id = v.producto_id
              ${wherePg}
