@@ -1,18 +1,13 @@
 {
   "name": "mi-app",
   "version": "1.0.0",
-  "description": "Sistema con login, catálogo y soporte de base de datos para Railway",
+  "description": "Sistema con login y usuarios permitidos",
   "main": "grupo.js",
   "scripts": {
-    "start": "node grupo.js",
-    "start:server": "node backend/server.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "start": "node grupo.js"
   },
   "dependencies": {
     "express": "^4.21.2",
-    "pg": "^8.13.1",
     "sqlite3": "^5.1.7"
   }
 }

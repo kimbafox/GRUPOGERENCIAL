@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin</title>
+    <title>Vendedor</title>
     <link rel="stylesheet" href="css/basico.css">
 </head>
-<body data-panel="admin">
-
+<body data-panel="vendor">
 <header>
     <div class="brand-copy">
-        <h1>Panel Administrador</h1>
-      
+        <h1>Panel Vendedor</h1>
     </div>
     <div class="admin-inline-actions">
         <button type="button" onclick="window.location.href='index.html'">Ver tienda</button>
@@ -21,7 +19,7 @@
 
 <main>
     <section class="info-panel">
-        <h2>Administrador</h2>
+        <h2>Vendedor</h2>
         <p id="usuario-info"></p>
     </section>
 
@@ -29,11 +27,11 @@
         <h2>Resumen</h2>
         <div class="metric-cards">
             <article class="metric-card">
-                <span>Productos activos</span>
+                <span>Mis productos</span>
                 <strong id="metric-total-productos">0</strong>
             </article>
             <article class="metric-card">
-                <span>Compras registradas</span>
+                <span>Mis compras</span>
                 <strong id="metric-compras-totales">0</strong>
             </article>
             <article class="metric-card">
@@ -51,7 +49,7 @@
 
     <section class="product-upload-section">
         <div class="upload-header">
-            <h2>Productos</h2>
+            <h2>Mis productos</h2>
             <button id="toggle-producto-btn" type="button" onclick="toggleProductoPanel()">Abrir carga</button>
         </div>
 
@@ -73,34 +71,34 @@
 
                         <div class="field-group">
                             <label for="producto-precio">Precio (Bs)</label>
-                            <input type="number" id="producto-precio" placeholder="Precio de venta en Bs">
+                            <input type="number" id="producto-precio" placeholder="Precio">
                         </div>
 
                         <div class="field-group">
                             <label for="producto-stock">Stock</label>
-                            <input type="number" id="producto-stock" placeholder="Stock disponible">
+                            <input type="number" id="producto-stock" placeholder="Stock">
                         </div>
                     </div>
 
                     <div class="field-group">
                         <label for="producto-imagen">Imagen</label>
-                        <input type="text" id="producto-imagen" placeholder="Ruta de imagen o URL">
+                        <input type="text" id="producto-imagen" placeholder="Ruta o URL">
                     </div>
 
                     <div class="field-group">
                         <label for="producto-descripcion">Descripción</label>
-                        <textarea id="producto-descripcion" rows="5" placeholder="Descripción o resumen del producto"></textarea>
+                        <textarea id="producto-descripcion" rows="5" placeholder="Descripción"></textarea>
                     </div>
                 </div>
 
                 <aside class="preview-side">
-                    <h3>Previsualización</h3>
+                    <h3>Vista previa</h3>
                     <article class="product-preview-card">
                         <img id="preview-imagen" class="preview-image" src="assets/M.png" alt="Vista previa del producto">
                         <div class="preview-meta">
                             <span id="preview-categoria" class="catalog-category">Categoría</span>
                             <h4 id="preview-nombre">Nombre del producto</h4>
-                            <p id="preview-descripcion">Aquí verás el resumen del producto antes de publicarlo.</p>
+                            <p id="preview-descripcion">Sin resumen.</p>
                             <strong id="preview-precio" class="preview-price">Bs 0</strong>
                             <small id="preview-stock" class="preview-stock-pill">Stock: 0</small>
                         </div>
@@ -132,55 +130,12 @@
             </div>
         </div>
     </section>
-
-    <section>
-        <h2>Usuarios</h2>
-        <div class="admin-grid">
-            <input type="text" id="nuevo-nombre" placeholder="Nombre del usuario">
-            <input type="email" id="nuevo-email" placeholder="Correo autorizado">
-            <input type="text" id="nuevo-password" placeholder="Contraseña inicial">
-            <select id="nuevo-rol">
-                <option value="vendor">Vendedor</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-        <button type="button" onclick="guardarUsuarioAutorizado()">Guardar usuario</button>
-        <p id="usuarios-estado"></p>
-
-        <div class="tabla-wrap">
-            <table class="tabla-usuarios">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Correo</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="usuarios-body">
-                    <tr><td colspan="4">Cargando usuarios...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
 </main>
-
-<aside class="nota-lateral-admin">
-    <button class="nota-lateral-boton" type="button" onclick="toggleNotaGrupo()">Nota para el grupo</button>
-
-    <div id="notaGrupoPanel" class="nota-lateral-panel oculto">
-        <h2>Nota para KIMBIN</h2>
-        <textarea id="kimbin-mensaje" rows="6" style="width:100%; padding:10px; border-radius:0; border:1px solid #cbd5e1; box-sizing:border-box;"></textarea>
-        <button onclick="guardarNotaKimbin()">Guardar nota</button>
-        <p id="kimbin-estado"></p>
-    </div>
-</aside>
 
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/kimbin.js"></script>
 <script>
-initAdminPanel();
+initVendedorPanel();
 </script>
 </body>
 </html>

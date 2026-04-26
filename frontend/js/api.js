@@ -1,43 +1,22 @@
 const API = {
     baseUrl: '',
 
-    getSessionToken() {
-        return sessionStorage.getItem('sessionToken') || '';
-    },
-
     async request(url, options = {}) {
+        const token = sessionStorage.getItem('authToken');
         const headers = {
             ...(options.headers || {})
         };
-        const sessionToken = this.getSessionToken();
 
-        if (sessionToken) {
-            headers.Authorization = `Bearer ${sessionToken}`;
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
         }
 
         const response = await fetch(`${this.baseUrl}${url}`, {
             ...options,
             headers
         });
-        const contentType = response.headers.get('content-type') || '';
-        const payload = contentType.includes('application/json')
-            ? await response.json()
-            : { ok: response.ok, mensaje: response.statusText };
 
-        if (typeof payload.ok === 'undefined') {
-            payload.ok = response.ok;
-        }
-
-        if (!response.ok && !payload.mensaje) {
-            payload.mensaje = 'La solicitud no pudo completarse.';
-        }
-
-        if ((response.status === 401 || response.status === 403) && url !== '/api/login') {
-            sessionStorage.removeItem('auth');
-            sessionStorage.removeItem('sessionToken');
-        }
-
-        return payload;
+        return response.json();
     },
 
     async login(email, password) {
@@ -54,12 +33,18 @@ const API = {
         return this.request('/api/health');
     },
 
-    async obtenerUsuarios(adminEmail) {
-        return this.request(`/api/usuarios?adminEmail=${encodeURIComponent(adminEmail || '')}`);
+    async obtenerSesion() {
+        return this.request('/api/session');
     },
 
-    async obtenerHistorialUsuarios(adminEmail) {
-        return this.request(`/api/historial/usuarios?adminEmail=${encodeURIComponent(adminEmail || '')}`);
+    async logout() {
+        return this.request('/api/logout', {
+            method: 'POST'
+        });
+    },
+
+    async obtenerUsuarios() {
+        return this.request('/api/usuarios');
     },
 
     async guardarUsuario(usuario) {
@@ -76,8 +61,8 @@ const API = {
         return this.request('/api/productos');
     },
 
-    async obtenerProductosGestion(email) {
-        return this.request(`/api/productos/gestion?email=${encodeURIComponent(email || '')}`);
+    async obtenerMisProductos() {
+        return this.request('/api/mis-productos');
     },
 
     async guardarProducto(producto) {
@@ -93,8 +78,8 @@ const API = {
         });
     },
 
-    async eliminarProducto(id, actorEmail) {
-        return this.request(`/api/productos/${id}?email=${encodeURIComponent(actorEmail || '')}`, {
+    async eliminarProducto(id) {
+        return this.request(`/api/productos/${id}`, {
             method: 'DELETE'
         });
     },
@@ -109,12 +94,11 @@ const API = {
         });
     },
 
-    async obtenerHistorialVentas(email) {
-        return this.request(`/api/historial/ventas?email=${encodeURIComponent(email || '')}`);
+    async obtenerDashboard() {
+        return this.request('/api/dashboard/stats');
     },
 
-    async obtenerDashboard(email) {
-        const suffix = email ? `?email=${encodeURIComponent(email)}` : '';
-        return this.request(`/api/dashboard/stats${suffix}`);
+    async obtenerMiDashboard() {
+        return this.request('/api/dashboard/mis-stats');
     }
 };

@@ -31,9 +31,8 @@ async function cargarNotaKimbin() {
 async function guardarNotaKimbin() {
     const textarea = document.getElementById('kimbin-mensaje');
     const estado = document.getElementById('kimbin-estado');
-    const email = sessionStorage.getItem('usuarioEmail');
 
-    if (!textarea || !email) {
+    if (!textarea || !estado) {
         return;
     }
 
@@ -45,7 +44,7 @@ async function guardarNotaKimbin() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ mensaje, email })
+            body: JSON.stringify({ mensaje })
         });
         estado.textContent = data.mensaje;
 
