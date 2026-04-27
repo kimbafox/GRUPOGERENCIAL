@@ -21,6 +21,8 @@ const correosBase = [
     'vicha@coso.com'
 ];
 const mensajeInicialKimbin = 'Escribe aquí la nota de KIMBIN desde el panel de administración.';
+const ACTIVO_SI = 1;
+const ACTIVO_NO = 0;
 
 if (!databaseUrl) {
     throw new Error('DATABASE_URL no está configurada. Este backend ahora requiere PostgreSQL.');
@@ -69,6 +71,10 @@ function obtenerTokenDesdeRequest(req) {
     return String(req.headers['x-auth-token'] || req.query.token || '').trim();
 }
 
+function estaActivo(valor) {
+    return Number(valor) === ACTIVO_SI;
+}
+
 async function dbGet(text, params = []) {
     const result = await pool.query(text, params);
     return result.rows[0] || null;
@@ -102,14 +108,14 @@ async function crearUsuarioSiNoExiste(correo, clave = passwordBase, rol = 'vendo
 
     await dbRun(
         `INSERT INTO usuarios (nombre, email, password_hash, rol, activo)
-         VALUES ($1, $2, $3, $4, TRUE)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (email)
          DO UPDATE SET
             nombre = EXCLUDED.nombre,
             password_hash = EXCLUDED.password_hash,
             rol = EXCLUDED.rol,
-            activo = TRUE`,
-        [nombre, correo, passwordHash, rolFinal]
+            activo = $5`,
+        [nombre, correo, passwordHash, rolFinal, ACTIVO_SI]
     );
 }
 
@@ -117,9 +123,9 @@ async function obtenerUsuarioActivo(correo) {
     return dbGet(
         `SELECT id, nombre, email, password_hash, rol, activo
          FROM usuarios
-         WHERE email = $1 AND activo = TRUE
+         WHERE email = $1 AND activo = $2
          LIMIT 1`,
-        [correo]
+        [correo, ACTIVO_SI]
     );
 }
 
@@ -135,9 +141,9 @@ async function obtenerSesionActiva(req, res) {
         `SELECT s.token, s.expira_en, u.id, u.nombre, u.email, u.rol
          FROM sesiones s
          INNER JOIN usuarios u ON u.id = s.usuario_id
-         WHERE s.token = $1 AND u.activo = TRUE
+         WHERE s.token = $1 AND u.activo = $2
          LIMIT 1`,
-        [token]
+        [token, ACTIVO_SI]
     );
 
     if (!sesion) {
@@ -247,7 +253,7 @@ async function inicializarBaseDeDatos() {
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL DEFAULT '',
             rol TEXT NOT NULL DEFAULT 'vendor',
-            activo BOOLEAN NOT NULL DEFAULT TRUE,
+            activo INTEGER NOT NULL DEFAULT 1,
             creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -255,7 +261,7 @@ async function inicializarBaseDeDatos() {
     await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre TEXT`);
     await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT ''`);
     await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol TEXT NOT NULL DEFAULT 'vendor'`);
-    await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE`);
+    await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo INTEGER NOT NULL DEFAULT 1`);
     await dbRun(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP`);
 
     await dbRun(`
@@ -288,7 +294,7 @@ async function inicializarBaseDeDatos() {
             imagen_url TEXT DEFAULT '',
             stock INTEGER NOT NULL DEFAULT 0,
             creado_por_email TEXT DEFAULT '',
-            activo BOOLEAN NOT NULL DEFAULT TRUE,
+            activo INTEGER NOT NULL DEFAULT 1,
             creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
             actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
@@ -300,7 +306,7 @@ async function inicializarBaseDeDatos() {
     await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url TEXT DEFAULT ''`);
     await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS stock INTEGER NOT NULL DEFAULT 0`);
     await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS creado_por_email TEXT DEFAULT ''`);
-    await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE`);
+    await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS activo INTEGER NOT NULL DEFAULT 1`);
     await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP`);
     await dbRun(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP`);
 
@@ -376,7 +382,7 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 app.use('/KIMBIN', express.static(path.join(__dirname, '..', 'KIMBIN')));
 
 app.get('/api/health', asyncHandler(async (req, res) => {
-    const row = await dbGet('SELECT COUNT(*)::int AS total FROM usuarios WHERE activo = TRUE');
+    const row = await dbGet('SELECT COUNT(*)::int AS total FROM usuarios WHERE activo = $1', [ACTIVO_SI]);
     res.json({
         ok: true,
         mensaje: 'Servidor activo',
@@ -421,9 +427,9 @@ app.post('/api/usuarios', asyncHandler(async (req, res) => {
     if (existente) {
         await dbRun(
             `UPDATE usuarios
-             SET nombre = $1, password_hash = $2, rol = $3, activo = TRUE
-             WHERE email = $4`,
-            [nombreFinal, hashPassword(claveFinal), rolFinal, correo]
+             SET nombre = $1, password_hash = $2, rol = $3, activo = $4
+             WHERE email = $5`,
+            [nombreFinal, hashPassword(claveFinal), rolFinal, ACTIVO_SI, correo]
         );
 
         return res.json({ ok: true, mensaje: 'Usuario actualizado correctamente.' });
@@ -431,8 +437,8 @@ app.post('/api/usuarios', asyncHandler(async (req, res) => {
 
     await dbRun(
         `INSERT INTO usuarios (nombre, email, password_hash, rol, activo)
-         VALUES ($1, $2, $3, $4, TRUE)`,
-        [nombreFinal, correo, hashPassword(claveFinal), rolFinal]
+         VALUES ($1, $2, $3, $4, $5)`,
+        [nombreFinal, correo, hashPassword(claveFinal), rolFinal, ACTIVO_SI]
     );
 
     res.status(201).json({ ok: true, mensaje: 'Usuario guardado correctamente.' });
@@ -444,9 +450,10 @@ app.get('/api/productos', asyncHandler(async (req, res) => {
                 p.creado_en, p.actualizado_en, p.creado_por_email, COALESCE(SUM(c.cantidad), 0)::int AS vendidos
          FROM productos p
          LEFT JOIN compras c ON c.producto_id = p.id
-         WHERE p.activo = TRUE
+            WHERE p.activo = $1
          GROUP BY p.id
-         ORDER BY p.actualizado_en DESC, p.id DESC`
+            ORDER BY p.actualizado_en DESC, p.id DESC`,
+           [ACTIVO_SI]
     );
 
     res.json({ ok: true, productos });
@@ -463,10 +470,10 @@ app.get('/api/mis-productos', asyncHandler(async (req, res) => {
                 p.creado_en, p.actualizado_en, p.creado_por_email, COALESCE(SUM(c.cantidad), 0)::int AS vendidos
          FROM productos p
          LEFT JOIN compras c ON c.producto_id = p.id
-         WHERE p.activo = TRUE AND p.creado_por_email = $1
+         WHERE p.activo = $1 AND p.creado_por_email = $2
          GROUP BY p.id
          ORDER BY p.actualizado_en DESC, p.id DESC`,
-        [usuario.email]
+        [ACTIVO_SI, usuario.email]
     );
 
     res.json({ ok: true, productos });
@@ -492,9 +499,9 @@ app.post('/api/productos', asyncHandler(async (req, res) => {
 
     const result = await dbRun(
         `INSERT INTO productos (nombre, categoria, descripcion, precio, imagen_url, stock, creado_por_email, activo, actualizado_en)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, CURRENT_TIMESTAMP)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
          RETURNING id`,
-        [nombreFinal, categoriaFinal, descripcionFinal, precioFinal, imagenFinal, stockFinal, usuario.email]
+        [nombreFinal, categoriaFinal, descripcionFinal, precioFinal, imagenFinal, stockFinal, usuario.email, ACTIVO_SI]
     );
 
     res.status(201).json({ ok: true, mensaje: 'Producto creado correctamente.', id: result.rows[0].id });
@@ -509,7 +516,7 @@ app.put('/api/productos/:id', asyncHandler(async (req, res) => {
     const productoId = parseInt(req.params.id, 10);
     const producto = await obtenerProductoPorId(productoId);
 
-    if (!producto || producto.activo !== true) {
+    if (!producto || !estaActivo(producto.activo)) {
         return res.status(404).json({ ok: false, mensaje: 'Producto no encontrado.' });
     }
 
@@ -555,7 +562,7 @@ app.delete('/api/productos/:id', asyncHandler(async (req, res) => {
     const productoId = parseInt(req.params.id, 10);
     const producto = await obtenerProductoPorId(productoId);
 
-    if (!producto || producto.activo !== true) {
+    if (!producto || !estaActivo(producto.activo)) {
         return res.status(404).json({ ok: false, mensaje: 'Producto no encontrado.' });
     }
 
@@ -565,9 +572,9 @@ app.delete('/api/productos/:id', asyncHandler(async (req, res) => {
 
     const result = await dbRun(
         `UPDATE productos
-         SET activo = FALSE, actualizado_en = CURRENT_TIMESTAMP
-         WHERE id = $1`,
-        [productoId]
+         SET activo = $1, actualizado_en = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [ACTIVO_NO, productoId]
     );
 
     if (!result.rowCount) {
@@ -593,8 +600,8 @@ app.post('/api/compras', asyncHandler(async (req, res) => {
         await client.query('BEGIN');
 
         const productoResult = await client.query(
-            'SELECT * FROM productos WHERE id = $1 AND activo = TRUE LIMIT 1 FOR UPDATE',
-            [productoId]
+            'SELECT * FROM productos WHERE id = $1 AND activo = $2 LIMIT 1 FOR UPDATE',
+            [productoId, ACTIVO_SI]
         );
         const producto = productoResult.rows[0];
 
@@ -644,7 +651,7 @@ app.get('/api/dashboard/stats', asyncHandler(async (req, res) => {
         return;
     }
 
-    const totalProductos = await dbGet('SELECT COUNT(*)::int AS total FROM productos WHERE activo = TRUE');
+    const totalProductos = await dbGet('SELECT COUNT(*)::int AS total FROM productos WHERE activo = $1', [ACTIVO_SI]);
     const comprasTotales = await dbGet('SELECT COALESCE(SUM(cantidad), 0)::int AS total FROM compras');
     const productoMasComprado = await dbGet(
         `SELECT producto_nombre, SUM(cantidad)::int AS total
@@ -677,8 +684,8 @@ app.get('/api/dashboard/mis-stats', asyncHandler(async (req, res) => {
     }
 
     const totalProductos = await dbGet(
-        'SELECT COUNT(*)::int AS total FROM productos WHERE activo = TRUE AND creado_por_email = $1',
-        [usuario.email]
+        'SELECT COUNT(*)::int AS total FROM productos WHERE activo = $1 AND creado_por_email = $2',
+        [ACTIVO_SI, usuario.email]
     );
     const comprasTotales = await dbGet(
         `SELECT COALESCE(SUM(c.cantidad), 0)::int AS total
