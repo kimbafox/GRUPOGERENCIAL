@@ -44,6 +44,38 @@ async function login() {
     }
 }
 
+async function registrarUsuario() {
+    const nombre = document.getElementById('registro-nombre')?.value?.trim();
+    const correo = document.getElementById('registro-correo')?.value?.trim().toLowerCase();
+    const password = document.getElementById('registro-password')?.value?.trim();
+    const confirmacion = document.getElementById('registro-password-confirmacion')?.value?.trim();
+
+    if (!nombre || !correo || !password || !confirmacion) {
+        alert('Completa nombre, correo, contraseña y confirmación.');
+        return;
+    }
+
+    if (password !== confirmacion) {
+        alert('Las contraseñas no coinciden.');
+        return;
+    }
+
+    try {
+        const resultado = await API.register({ nombre, email: correo, password });
+
+        if (!resultado.ok || !resultado.token || !resultado.usuario) {
+            alert(resultado.mensaje || 'No se pudo completar el registro.');
+            return;
+        }
+
+        guardarSesion(resultado.usuario, resultado.token);
+        cerrarRegistro();
+        redirigirSegunRol(resultado.usuario.rol);
+    } catch (error) {
+        alert('Error de conexión con el servidor.');
+    }
+}
+
 async function verificarAuth(rolEsperado) {
     const token = sessionStorage.getItem('authToken');
 

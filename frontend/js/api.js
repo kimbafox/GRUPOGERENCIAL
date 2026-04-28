@@ -29,6 +29,16 @@ const API = {
         });
     },
 
+    async register(usuario) {
+        return this.request('/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(usuario)
+        });
+    },
+
     async health() {
         return this.request('/api/health');
     },

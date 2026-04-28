@@ -1,4 +1,5 @@
 function mostrarLogin() {
+    cerrarRegistro();
     const modal = document.getElementById('login');
     if (modal) {
         modal.classList.remove('oculto');
@@ -10,6 +11,72 @@ function cerrarLogin() {
     if (modal) {
         modal.classList.add('oculto');
     }
+}
+
+function mostrarRegistro() {
+    cerrarLogin();
+    const modal = document.getElementById('registro');
+    if (modal) {
+        modal.classList.remove('oculto');
+    }
+}
+
+function cerrarRegistro() {
+    const modal = document.getElementById('registro');
+    if (modal) {
+        modal.classList.add('oculto');
+    }
+}
+
+function abrirCompraModal(producto) {
+    const modal = document.getElementById('compra-modal');
+    if (!modal || !producto) {
+        return;
+    }
+
+    window.productoCompraActual = producto;
+
+    const nombre = document.getElementById('compra-producto-nombre');
+    const resumen = document.getElementById('compra-producto-resumen');
+    const imagen = document.getElementById('compra-producto-imagen');
+    const categoria = document.getElementById('compra-producto-categoria');
+    const precio = document.getElementById('compra-producto-precio');
+    const stock = document.getElementById('compra-producto-stock');
+    const cantidad = document.getElementById('compra-cantidad');
+    const nombreComprador = document.getElementById('compra-nombre');
+    const emailComprador = document.getElementById('compra-email');
+    const estado = document.getElementById('compra-estado');
+
+    if (nombre) nombre.textContent = producto.nombre || 'Producto';
+    if (resumen) resumen.textContent = producto.descripcion || 'Completa tus datos para confirmar la compra.';
+    if (imagen) {
+        imagen.src = producto.imagen_url || 'assets/M.png';
+        imagen.alt = producto.nombre || 'Producto';
+        imagen.onerror = () => {
+            imagen.src = 'assets/M.png';
+        };
+    }
+    if (categoria) categoria.textContent = producto.categoria || 'General';
+    if (precio) precio.textContent = formatoMoneda(producto.precio);
+    if (stock) stock.textContent = `Stock disponible: ${Number(producto.stock || 0)}`;
+    if (cantidad) {
+        cantidad.value = '1';
+        cantidad.max = String(Math.max(1, Number(producto.stock || 1)));
+    }
+    if (nombreComprador) nombreComprador.value = 'Cliente web';
+    if (emailComprador) emailComprador.value = '';
+    if (estado) estado.textContent = '';
+
+    modal.classList.remove('oculto');
+}
+
+function cerrarCompraModal() {
+    const modal = document.getElementById('compra-modal');
+    if (modal) {
+        modal.classList.add('oculto');
+    }
+
+    window.productoCompraActual = null;
 }
 
 function formatoMoneda(valor) {
@@ -72,6 +139,97 @@ function iniciarCarruselPromos() {
     setInterval(() => goTo(index + 1), 7000);
 }
 
+function obtenerCategoriasCatalogo(productos) {
+    return Array.from(new Set(
+        productos
+            .map((producto) => String(producto.categoria || '').trim())
+            .filter(Boolean)
+    )).sort((categoriaA, categoriaB) => categoriaA.localeCompare(categoriaB, 'es'));
+}
+
+function actualizarOpcionesCategoria(productos) {
+    const select = document.getElementById('filtrar-categoria');
+    if (!select) {
+        return;
+    }
+
+    const valorActual = select.value;
+    const categorias = obtenerCategoriasCatalogo(productos);
+
+    select.innerHTML = [
+        '<option value="">Todas las categorías</option>',
+        ...categorias.map((categoria) => `<option value="${escaparHtml(categoria)}">${escaparHtml(categoria)}</option>`)
+    ].join('');
+
+    if (categorias.includes(valorActual)) {
+        select.value = valorActual;
+    }
+}
+
+function renderizarCatalogoVentas(productos) {
+    const contenedor = document.getElementById('catalogo-grid');
+    if (!contenedor) {
+        return;
+    }
+
+    if (!productos.length) {
+        contenedor.innerHTML = '<p class="catalog-loading">No hay productos que coincidan con tu búsqueda.</p>';
+        return;
+    }
+
+    contenedor.innerHTML = productos.map((producto) => `
+        <article class="catalog-card">
+            <div class="catalog-image-wrap">
+                <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
+            </div>
+            <div class="catalog-content">
+                <div>
+                    <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
+                    <h3>${escaparHtml(producto.nombre)}</h3>
+                    <p>${escaparHtml(producto.descripcion)}</p>
+                </div>
+                <div class="catalog-footer">
+                    <div>
+                        <strong>${formatoMoneda(producto.precio)}</strong>
+                        <small>Stock disponible: ${Number(producto.stock || 0)}</small>
+                    </div>
+                    <div class="catalog-actions">
+                        <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
+                        <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
+                    </div>
+                </div>
+            </div>
+        </article>
+    `).join('');
+}
+
+function aplicarFiltrosCatalogo() {
+    const productos = Array.isArray(window.catalogoProductos) ? window.catalogoProductos : [];
+    const termino = document.getElementById('buscar-producto')?.value?.trim().toLowerCase() || '';
+    const categoria = document.getElementById('filtrar-categoria')?.value?.trim() || '';
+
+    const filtrados = productos.filter((producto) => {
+        const coincideNombre = !termino || String(producto.nombre || '').toLowerCase().includes(termino);
+        const coincideCategoria = !categoria || String(producto.categoria || '').trim() === categoria;
+        return coincideNombre && coincideCategoria;
+    });
+
+    renderizarCatalogoVentas(filtrados);
+}
+
+function iniciarFiltrosCatalogo() {
+    const buscar = document.getElementById('buscar-producto');
+    const categoria = document.getElementById('filtrar-categoria');
+
+    if (buscar) {
+        buscar.addEventListener('input', aplicarFiltrosCatalogo);
+    }
+
+    if (categoria) {
+        categoria.addEventListener('change', aplicarFiltrosCatalogo);
+    }
+}
+
 async function cargarCatalogoVentas() {
     const contenedor = document.getElementById('catalogo-grid');
     if (!contenedor) {
@@ -87,33 +245,12 @@ async function cargarCatalogoVentas() {
 
         if (!resultado.ok || productos.length === 0) {
             contenedor.innerHTML = '<p class="catalog-loading">Aún no hay productos cargados. Súbelos desde el panel de admin.</p>';
+            actualizarOpcionesCategoria([]);
             return;
         }
 
-        contenedor.innerHTML = productos.map((producto) => `
-            <article class="catalog-card">
-                <div class="catalog-image-wrap">
-                    <img src="${escaparHtml(producto.imagen_url || 'assets/M.png')}" alt="${escaparHtml(producto.nombre)}" class="catalog-image">
-                </div>
-                <div class="catalog-content">
-                    <div>
-                        <span class="catalog-category">${escaparHtml(producto.categoria)}</span>
-                        <h3>${escaparHtml(producto.nombre)}</h3>
-                        <p>${escaparHtml(producto.descripcion)}</p>
-                    </div>
-                    <div class="catalog-footer">
-                        <div>
-                            <strong>${formatoMoneda(producto.precio)}</strong>
-                            <small>Stock disponible: ${Number(producto.stock || 0)}</small>
-                        </div>
-                        <div class="catalog-actions">
-                            <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
-                            <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
-                        </div>
-                    </div>
-                </div>
-            </article>
-        `).join('');
+        actualizarOpcionesCategoria(productos);
+        aplicarFiltrosCatalogo();
     } catch (error) {
         contenedor.innerHTML = '<p class="catalog-loading">No se pudo cargar el catálogo.</p>';
     }
@@ -137,34 +274,65 @@ async function comprarProducto(id) {
         return;
     }
 
-    const cantidadTexto = window.prompt(`¿Cuántas unidades de ${producto.nombre} deseas comprar?`, '1');
-    if (cantidadTexto === null) {
+    abrirCompraModal(producto);
+}
+
+async function confirmarCompraProducto() {
+    const producto = window.productoCompraActual;
+    const estado = document.getElementById('compra-estado');
+    if (!producto) {
+        if (estado) {
+            estado.textContent = 'No se encontró el producto seleccionado.';
+        }
         return;
     }
 
-    const cantidad = Math.max(1, parseInt(cantidadTexto, 10) || 1);
-    const nombreComprador = window.prompt('Nombre del comprador:', 'Cliente web') || 'Cliente web';
-    const emailComprador = window.prompt('Correo del comprador (opcional):', '') || '';
+    const cantidad = Math.max(1, parseInt(document.getElementById('compra-cantidad')?.value, 10) || 1);
+    const nombreComprador = document.getElementById('compra-nombre')?.value?.trim() || 'Cliente web';
+    const emailComprador = document.getElementById('compra-email')?.value?.trim() || '';
+
+    if (cantidad > Number(producto.stock || 0)) {
+        if (estado) {
+            estado.textContent = 'La cantidad supera el stock disponible.';
+        }
+        return;
+    }
+
+    if (estado) {
+        estado.textContent = 'Procesando compra...';
+    }
 
     try {
         const resultado = await API.comprarProducto({
-            productoId: id,
+            productoId: producto.id,
             cantidad,
             nombreComprador,
             emailComprador
         });
 
-        alert(resultado.mensaje || 'Compra procesada.');
-
         if (resultado.ok) {
+            if (estado) {
+                estado.textContent = resultado.mensaje || 'Compra procesada.';
+            }
             await cargarCatalogoVentas();
+            window.setTimeout(() => {
+                cerrarCompraModal();
+            }, 900);
+            return;
+        }
+
+        if (estado) {
+            estado.textContent = resultado.mensaje || 'No se pudo procesar la compra.';
         }
     } catch (error) {
-        alert('No se pudo registrar la compra.');
+        if (estado) {
+            estado.textContent = 'No se pudo registrar la compra.';
+        }
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     iniciarCarruselPromos();
+    iniciarFiltrosCatalogo();
     cargarCatalogoVentas();
 });

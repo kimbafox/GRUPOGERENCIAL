@@ -16,7 +16,8 @@
             
         </div>
     </div>
-    <div>
+    <div class="header-actions">
+        <button class="btn-secundario" onclick="mostrarRegistro()">Registrarse</button>
         <button class="btn-acceso" onclick="mostrarLogin()">Acceder</button>
     </div>
 </header>
@@ -65,6 +66,18 @@
     </section>
 
     <section class="catalog-section">
+        <div class="catalog-toolbar">
+            <div class="catalog-toolbar-copy">
+                <h3>Catálogo</h3>
+                <p>Busca por nombre y filtra por categoría.</p>
+            </div>
+            <div class="catalog-filters">
+                <input type="search" id="buscar-producto" placeholder="Buscar por nombre">
+                <select id="filtrar-categoria">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+        </div>
         <div id="catalogo-grid" class="catalog-grid">
             <p class="catalog-loading">Cargando categorías de venta...</p>
         </div>
@@ -76,8 +89,70 @@
             <input type="email" id="correo" placeholder="Correo" required>
             <input type="password" id="password" placeholder="Contraseña" required>
 
-            <button onclick="login()">Ingresar</button>
-            <button onclick="cerrarLogin()">Cancelar</button>
+            <div class="modal-actions">
+                <button onclick="login()">Ingresar</button>
+                <button class="btn-secundario" onclick="mostrarRegistro()">Ir a registro</button>
+                <button class="btn-secundario" onclick="cerrarLogin()">Cancelar</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="registro" class="modal oculto">
+        <div class="modal-content modal-content-registro">
+            <div class="registro-form-panel">
+                <h2>Crear cuenta</h2>
+                <p class="registro-copy">Regístrate como vendedor y entra directo a tu panel.</p>
+                <input type="text" id="registro-nombre" placeholder="Nombre completo" required>
+                <input type="email" id="registro-correo" placeholder="Correo" required>
+                <input type="password" id="registro-password" placeholder="Contraseña" required>
+                <input type="password" id="registro-password-confirmacion" placeholder="Confirmar contraseña" required>
+
+                <div class="modal-actions">
+                    <button onclick="registrarUsuario()">Registrarme</button>
+                    <button class="btn-secundario" onclick="mostrarLogin()">Ya tengo cuenta</button>
+                    <button class="btn-secundario" onclick="cerrarRegistro()">Cancelar</button>
+                </div>
+            </div>
+            <div class="registro-visual-panel" aria-hidden="true">
+                <div class="registro-logo-glow"></div>
+                <img src="assets/M.png" alt="Logo de Merkateck" class="registro-logo">
+            </div>
+        </div>
+    </section>
+
+    <section id="compra-modal" class="modal oculto">
+        <div class="modal-content modal-content-compra">
+            <div class="compra-modal-head">
+                <div>
+                    <span class="compra-badge">Compra segura</span>
+                    <h2 id="compra-producto-nombre">Producto</h2>
+                    <p id="compra-producto-resumen" class="compra-copy">Completa tus datos para confirmar la compra.</p>
+                </div>
+                <button type="button" class="btn-secundario compra-cerrar" onclick="cerrarCompraModal()">Cerrar</button>
+            </div>
+
+            <div class="compra-modal-grid">
+                <div class="compra-producto-card">
+                    <img id="compra-producto-imagen" src="assets/M.png" alt="Producto" class="compra-producto-imagen">
+                    <div class="compra-producto-meta">
+                        <span id="compra-producto-categoria" class="catalog-category">General</span>
+                        <strong id="compra-producto-precio">Bs 0</strong>
+                        <small id="compra-producto-stock">Stock disponible: 0</small>
+                    </div>
+                </div>
+
+                <div class="compra-form-panel">
+                    <input type="number" id="compra-cantidad" min="1" value="1" placeholder="Cantidad">
+                    <input type="text" id="compra-nombre" placeholder="Nombre del comprador">
+                    <input type="email" id="compra-email" placeholder="Correo del comprador (opcional)">
+                    <p id="compra-estado" class="compra-estado"></p>
+
+                    <div class="modal-actions">
+                        <button type="button" onclick="confirmarCompraProducto()">Confirmar compra</button>
+                        <button type="button" class="btn-secundario" onclick="cerrarCompraModal()">Cancelar</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 </main>

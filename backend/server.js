@@ -119,6 +119,19 @@ async function crearUsuarioSiNoExiste(correo, clave = passwordBase, rol = 'vendo
     );
 }
 
+async function crearSesionUsuario(usuarioId, correo) {
+    const token = crearTokenSesion();
+    const expiraEn = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
+
+    await dbRun('INSERT INTO accesos (email) VALUES ($1)', [correo]);
+    await dbRun(
+        'INSERT INTO sesiones (token, usuario_id, expira_en) VALUES ($1, $2, $3)',
+        [token, usuarioId, expiraEn]
+    );
+
+    return token;
+}
+
 async function obtenerUsuarioActivo(correo) {
     return dbGet(
         `SELECT id, nombre, email, password_hash, rol, activo
@@ -442,6 +455,43 @@ app.post('/api/usuarios', asyncHandler(async (req, res) => {
     );
 
     res.status(201).json({ ok: true, mensaje: 'Usuario guardado correctamente.' });
+}));
+
+app.post('/api/register', asyncHandler(async (req, res) => {
+    const { email, nombre, password } = req.body || {};
+    const correo = String(email || '').trim().toLowerCase();
+    const nombreFinal = String(nombre || '').trim() || obtenerNombreDesdeCorreo(correo);
+    const claveFinal = String(password || '').trim();
+
+    if (!esEmailValido(correo)) {
+        return res.status(400).json({ ok: false, mensaje: 'Ingresa un correo válido.' });
+    }
+
+    if (claveFinal.length < 4) {
+        return res.status(400).json({ ok: false, mensaje: 'La contraseña debe tener al menos 4 caracteres.' });
+    }
+
+    const existente = await dbGet('SELECT id FROM usuarios WHERE email = $1 LIMIT 1', [correo]);
+    if (existente) {
+        return res.status(409).json({ ok: false, mensaje: 'Ese correo ya está registrado.' });
+    }
+
+    const result = await dbRun(
+        `INSERT INTO usuarios (nombre, email, password_hash, rol, activo)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, nombre, email, rol`,
+        [nombreFinal, correo, hashPassword(claveFinal), 'vendor', ACTIVO_SI]
+    );
+
+    const usuario = result.rows[0];
+    const token = await crearSesionUsuario(usuario.id, correo);
+
+    res.status(201).json({
+        ok: true,
+        mensaje: 'Registro completado.',
+        token,
+        usuario
+    });
 }));
 
 app.get('/api/productos', asyncHandler(async (req, res) => {
@@ -786,14 +836,7 @@ app.post('/api/login', asyncHandler(async (req, res) => {
         return res.status(401).json({ ok: false, mensaje: 'Contraseña incorrecta' });
     }
 
-    const token = crearTokenSesion();
-    const expiraEn = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
-
-    await dbRun('INSERT INTO accesos (email) VALUES ($1)', [correo]);
-    await dbRun(
-        'INSERT INTO sesiones (token, usuario_id, expira_en) VALUES ($1, $2, $3)',
-        [token, usuario.id, expiraEn]
-    );
+    const token = await crearSesionUsuario(usuario.id, correo);
 
     res.json({
         ok: true,
