@@ -79,6 +79,36 @@ function cerrarCompraModal() {
     window.productoCompraActual = null;
 }
 
+function aplicarTema(nombreTema) {
+    const tema = nombreTema === 'ink' ? 'ink' : 'dark';
+    document.body.classList.toggle('theme-ink', tema === 'ink');
+    document.body.dataset.theme = tema;
+
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) {
+        const siguiente = tema === 'ink' ? 'nocturno' : 'tinta';
+        toggle.setAttribute('aria-label', `Cambiar al tema ${siguiente}`);
+        toggle.setAttribute('title', `Cambiar al tema ${siguiente}`);
+    }
+
+    localStorage.setItem('merkateck-theme', tema);
+}
+
+function alternarTema() {
+    const temaActual = document.body.dataset.theme === 'ink' ? 'ink' : 'dark';
+    aplicarTema(temaActual === 'ink' ? 'dark' : 'ink');
+}
+
+function iniciarTema() {
+    const temaGuardado = localStorage.getItem('merkateck-theme') || 'dark';
+    aplicarTema(temaGuardado);
+
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) {
+        toggle.addEventListener('click', alternarTema);
+    }
+}
+
 function formatoMoneda(valor) {
     const monto = Number(valor || 0);
     return `Bs ${new Intl.NumberFormat('es-BO', {
@@ -332,6 +362,7 @@ async function confirmarCompraProducto() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    iniciarTema();
     iniciarCarruselPromos();
     iniciarFiltrosCatalogo();
     cargarCatalogoVentas();
