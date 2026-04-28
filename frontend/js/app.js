@@ -42,13 +42,25 @@ function abrirCompraModal(producto) {
     const categoria = document.getElementById('compra-producto-categoria');
     const precio = document.getElementById('compra-producto-precio');
     const stock = document.getElementById('compra-producto-stock');
+    const toggleDescripcion = document.getElementById('compra-toggle-descripcion');
     const cantidad = document.getElementById('compra-cantidad');
     const nombreComprador = document.getElementById('compra-nombre');
     const emailComprador = document.getElementById('compra-email');
     const estado = document.getElementById('compra-estado');
 
     if (nombre) nombre.textContent = producto.nombre || 'Producto';
-    if (resumen) resumen.textContent = producto.descripcion || 'Completa tus datos para confirmar la compra.';
+    if (resumen) {
+        const descripcion = producto.descripcion || 'Completa tus datos para confirmar la compra.';
+        resumen.textContent = descripcion;
+        resumen.classList.add('compra-copy-collapsed');
+    }
+    if (toggleDescripcion) {
+        const descripcion = String(producto.descripcion || '').trim();
+        const necesitaToggle = descripcion.length > 110;
+        toggleDescripcion.classList.toggle('oculto', !necesitaToggle);
+        toggleDescripcion.textContent = 'Ver mas';
+        toggleDescripcion.setAttribute('aria-expanded', 'false');
+    }
     if (imagen) {
         imagen.src = producto.imagen_url || 'assets/M.png';
         imagen.alt = producto.nombre || 'Producto';
@@ -68,6 +80,18 @@ function abrirCompraModal(producto) {
     if (estado) estado.textContent = '';
 
     modal.classList.remove('oculto');
+}
+
+function toggleCompraDescripcion() {
+    const resumen = document.getElementById('compra-producto-resumen');
+    const toggle = document.getElementById('compra-toggle-descripcion');
+    if (!resumen || !toggle) {
+        return;
+    }
+
+    const expandido = resumen.classList.toggle('compra-copy-collapsed') === false;
+    toggle.textContent = expandido ? 'Ver menos' : 'Ver mas';
+    toggle.setAttribute('aria-expanded', expandido ? 'true' : 'false');
 }
 
 function cerrarCompraModal() {

@@ -15,7 +15,7 @@
         </button>
         <div class="brand-copy">
             <h1>Merkateck</h1>
-            <p>Toca el logo para cambiar entre nocturno y tinta.</p>
+            <p>Toca el logo para cambiar entre nocturno y tinta :3</p>
         </div>
     </div>
     <div class="header-actions">
@@ -128,7 +128,10 @@
                 <div>
                     <span class="compra-badge">Compra segura</span>
                     <h2 id="compra-producto-nombre">Producto</h2>
-                    <p id="compra-producto-resumen" class="compra-copy">Completa tus datos para confirmar la compra.</p>
+                    <div class="compra-copy-shell">
+                        <p id="compra-producto-resumen" class="compra-copy compra-copy-collapsed">Completa tus datos para confirmar la compra.</p>
+                        <button type="button" id="compra-toggle-descripcion" class="compra-toggle-descripcion oculto" onclick="toggleCompraDescripcion()">Ver mas</button>
+                    </div>
                 </div>
                 <button type="button" class="btn-secundario compra-cerrar" onclick="cerrarCompraModal()">Cerrar</button>
             </div>
@@ -149,7 +152,7 @@
                     <input type="email" id="compra-email" placeholder="Correo del comprador (opcional)">
                     <p id="compra-estado" class="compra-estado"></p>
 
-                    <div class="modal-actions">
+                    <div class="modal-actions compra-actions">
                         <button type="button" onclick="confirmarCompraProducto()">Confirmar compra</button>
                         <button type="button" class="btn-secundario" onclick="cerrarCompraModal()">Cancelar</button>
                     </div>

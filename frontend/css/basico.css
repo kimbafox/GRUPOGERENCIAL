@@ -874,6 +874,36 @@ body.theme-ink #registro input::placeholder {
     line-height: 1.5;
 }
 
+.compra-copy-shell {
+    display: grid;
+    gap: 6px;
+}
+
+.compra-copy-collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.compra-toggle-descripcion {
+    justify-self: start;
+    padding: 0;
+    margin-top: 0;
+    background: transparent;
+    color: #f5f7fb;
+    border: none;
+    box-shadow: none;
+    font-size: 0.88rem;
+    text-decoration: underline;
+}
+
+.compra-toggle-descripcion:hover {
+    box-shadow: none;
+    transform: none;
+    opacity: 1;
+}
+
 .compra-modal-grid {
     display: grid;
     grid-template-columns: minmax(240px, 0.95fr) minmax(0, 1.05fr);
@@ -910,6 +940,31 @@ body.theme-ink #registro input::placeholder {
 
 .compra-form-panel {
     padding: 18px;
+}
+
+.compra-actions button,
+.compra-cerrar {
+    background: linear-gradient(145deg, #000000, #121212);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.compra-actions .btn-secundario {
+    background: linear-gradient(145deg, #0d0d0d, #1a1a1a);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.theme-ink .compra-toggle-descripcion {
+    color: #111111;
+}
+
+body.theme-ink .compra-actions button,
+body.theme-ink .compra-cerrar {
+    background: linear-gradient(145deg, #000000, #181818);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
 .compra-form-panel input {
@@ -1325,6 +1380,14 @@ button:hover {
         grid-template-columns: 1fr;
     }
 
+    .modal-content-compra {
+        padding: 18px;
+    }
+
+    .compra-modal-head {
+        margin-bottom: 12px;
+    }
+
     .registro-form-panel,
     .registro-visual-panel,
     .compra-form-panel {
@@ -1336,7 +1399,7 @@ button:hover {
     }
 
     .compra-producto-imagen {
-        height: 220px;
+        height: 160px;
     }
 
     .catalog-content,
@@ -1344,6 +1407,31 @@ button:hover {
     .registro-form-panel,
     .registro-visual-panel {
         padding: 16px;
+    }
+
+    .compra-producto-meta {
+        padding: 12px;
+        gap: 6px;
+    }
+
+    .compra-form-panel input {
+        margin-bottom: 8px;
+        padding: 10px 11px;
+    }
+
+    .compra-copy {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    .compra-actions {
+        gap: 8px;
+    }
+
+    .compra-actions button,
+    .compra-cerrar {
+        padding: 9px 12px;
+        font-size: 0.92rem;
     }
 
     .nota-lateral-admin {
@@ -1381,6 +1469,50 @@ button:hover {
 }
 
 @media (max-width: 420px) {
+    .modal-content-compra {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        padding: 12px;
+    }
+
+    .compra-modal-head {
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .compra-modal-head h2 {
+        margin: 6px 0 4px;
+        font-size: 1.1rem;
+    }
+
+    .compra-producto-imagen {
+        height: 120px;
+    }
+
+    .compra-producto-meta,
+    .compra-form-panel {
+        padding: 10px;
+    }
+
+    .compra-copy-collapsed {
+        -webkit-line-clamp: 1;
+    }
+
+    .compra-badge {
+        padding: 5px 8px;
+        font-size: 0.72rem;
+    }
+
+    .compra-form-panel input {
+        padding: 9px 10px;
+        font-size: 0.92rem;
+    }
+
+    .compra-actions button,
+    .compra-cerrar {
+        font-size: 0.88rem;
+    }
+
     .catalog-image-wrap,
     .catalog-image {
         min-height: 128px;
