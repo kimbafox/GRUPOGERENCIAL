@@ -446,6 +446,10 @@ body.theme-ink .catalog-card {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
 }
 
+body.theme-ink .catalog-content {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 244, 244, 0.88));
+}
+
 .catalog-image-wrap {
     min-height: 180px;
     background: #0b0f15;
@@ -476,6 +480,13 @@ body.theme-ink .catalog-footer strong {
     color: #050505;
 }
 
+body.theme-ink .catalog-toolbar-copy h3,
+body.theme-ink .catalog-toolbar-copy p,
+body.theme-ink .catalog-footer,
+body.theme-ink .catalog-actions button {
+    color: #111111;
+}
+
 .catalog-category {
     display: inline-block;
     margin-bottom: 8px;
@@ -503,7 +514,11 @@ body.theme-ink .catalog-category {
 
 body.theme-ink .catalog-content p,
 body.theme-ink .catalog-content small {
-    color: #2b2b2b;
+    color: #1f1f1f;
+}
+
+body.theme-ink .catalog-loading {
+    color: #202020;
 }
 
 .catalog-footer {
@@ -1118,7 +1133,11 @@ button:hover {
     }
 
     .catalog-image {
-        min-height: 220px;
+        min-height: 180px;
+    }
+
+    .catalog-content {
+        padding: 15px;
     }
 }
 
@@ -1195,6 +1214,51 @@ button:hover {
 
     .catalog-filters {
         width: 100%;
+    }
+
+    .catalog-card {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-image-wrap,
+    .catalog-image {
+        min-height: 145px;
+        height: 145px;
+    }
+
+    .catalog-content {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .catalog-content h3 {
+        margin-bottom: 6px;
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .catalog-content p {
+        margin: 0;
+        font-size: 0.92rem;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .catalog-content small {
+        font-size: 0.86rem;
+    }
+
+    .catalog-category {
+        margin-bottom: 6px;
+        padding: 4px 8px;
+        font-size: 0.76rem;
+    }
+
+    .catalog-footer strong {
+        font-size: 1rem;
     }
 
     .hero-panel {
@@ -1305,11 +1369,30 @@ button:hover {
 
     .catalog-actions {
         width: 100%;
+        gap: 8px;
     }
 
     .catalog-actions button {
         width: 100%;
         margin-top: 0;
+        padding: 9px 12px;
+        font-size: 0.92rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .catalog-image-wrap,
+    .catalog-image {
+        min-height: 128px;
+        height: 128px;
+    }
+
+    .catalog-content {
+        padding: 10px;
+    }
+
+    .catalog-content p {
+        -webkit-line-clamp: 2;
     }
 }
 
