@@ -224,7 +224,6 @@ function renderizarCatalogoVentas(productos) {
                         <small>Stock disponible: ${Number(producto.stock || 0)}</small>
                     </div>
                     <div class="catalog-actions">
-                        <button type="button" onclick="verDetalleProducto(${producto.id})">Ver detalle</button>
                         <button type="button" onclick="comprarProducto(${producto.id})">Comprar</button>
                     </div>
                 </div>
@@ -284,17 +283,6 @@ async function cargarCatalogoVentas() {
     } catch (error) {
         contenedor.innerHTML = '<p class="catalog-loading">No se pudo cargar el catálogo.</p>';
     }
-}
-
-function verDetalleProducto(id) {
-    const producto = (window.catalogoProductos || []).find((item) => Number(item.id) === Number(id));
-    if (!producto) {
-        return;
-    }
-
-    alert(
-        `${producto.nombre}\n\nCategoría: ${producto.categoria}\nPrecio: ${formatoMoneda(producto.precio)}\nStock: ${producto.stock}\n\n${producto.descripcion}`
-    );
 }
 
 async function comprarProducto(id) {
